@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { WebsiteAnalysis } from './api';
+import { formatBytes, formatRelativeTime, type AnalysisResponse } from './api';
 
 interface FormatOptions {
   verbose?: boolean;
@@ -9,121 +9,157 @@ interface FormatOptions {
   hosting?: boolean;
 }
 
-export function formatOutput(analysis: WebsiteAnalysis, options: FormatOptions): string {
-  const lines: string[] = [];
+export function formatOutput(data: AnalysisResponse, options: FormatOptions) {
+  console.log();
+  
+  // If specific sections requested, only show those
+  const showAll = !options.tech && !options.seo && !options.performance && !options.hosting;
   
   // Header
-  lines.push('');
-  lines.push(chalk.bold.cyan(`🌐 ${analysis.domain}`));
-  lines.push(chalk.gray('━'.repeat(60)));
-  lines.push('');
-
-  // Show all sections by default, or only requested sections
-  const showAll = !options.tech && !options.seo && !options.performance && !options.hosting;
-
+  console.log(chalk.bold.white('═'.repeat(60)));
+  console.log(chalk.bold.cyan(`  ${data.domain}`));
+  console.log(chalk.gray(`  ${data.url}`));
+  console.log(chalk.bold.white('═'.repeat(60)));
+  console.log();
+  
+  // Status
+  if (showAll) {
+    const statusColor = data.status === 'online' ? chalk.green : 
+                       data.status === 'offline' ? chalk.red : 
+                       chalk.yellow;
+    console.log(chalk.bold('Status:'), statusColor(data.status.toUpperCase()));
+    
+    if (data.lastAnalyzed) {
+      console.log(chalk.gray(`Last analyzed: ${formatRelativeTime(data.lastAnalyzed)}`));
+    }
+    console.log();
+  }
+  
   // Technology Stack
   if (showAll || options.tech) {
-    lines.push(chalk.bold('📦 Technology Stack'));
+    console.log(chalk.bold.blue('🔧 Technology Stack'));
+    console.log(chalk.gray('─'.repeat(60)));
     
-    const techByCategory = analysis.technologies.reduce((acc, tech) => {
-      if (!acc[tech.category]) acc[tech.category] = [];
-      acc[tech.category].push(tech);
-      return acc;
-    }, {} as Record<string, typeof analysis.technologies>);
-
-    Object.entries(techByCategory).forEach(([category, techs]) => {
-      const techList = techs.map(t => 
-        t.version ? `${t.name} ${chalk.gray(t.version)}` : t.name
-      ).join(', ');
-      lines.push(`  ${chalk.gray(category + ':')} ${techList}`);
-    });
-    
-    lines.push('');
-  }
-
-  // Performance
-  if (showAll || options.performance) {
-    lines.push(chalk.bold('⚡ Performance'));
-    lines.push(`  ${chalk.gray('Load Time:')}    ${formatTime(analysis.performance.loadTime)}`);
-    lines.push(`  ${chalk.gray('Page Size:')}    ${formatBytes(analysis.performance.pageSize)}`);
-    lines.push(`  ${chalk.gray('Requests:')}     ${analysis.performance.requestCount}`);
-    
-    if (analysis.performance.lcp) {
-      const lcpStatus = analysis.performance.lcp < 2.5 ? chalk.green('Good') : 
-                       analysis.performance.lcp < 4 ? chalk.yellow('Needs Improvement') : 
-                       chalk.red('Poor');
-      lines.push(`  ${chalk.gray('LCP:')}          ${formatTime(analysis.performance.lcp * 1000)} ${lcpStatus}`);
+    if (data.framework) {
+      console.log(`  ${chalk.bold('Framework:')}    ${chalk.cyan(data.framework)}`);
     }
     
-    lines.push('');
-  }
-
-  // SEO
-  if (showAll || options.seo) {
-    lines.push(chalk.bold('🔍 SEO'));
-    lines.push(`  ${chalk.gray('Title:')}        ${analysis.seo.title || chalk.red('Missing')}`);
-    lines.push(`  ${chalk.gray('Description:')}  ${analysis.seo.description ? chalk.green('✓ Present') : chalk.red('✗ Missing')}`);
-    lines.push(`  ${chalk.gray('Open Graph:')}   ${analysis.seo.openGraph ? chalk.green('✓ Complete') : chalk.yellow('✗ Incomplete')}`);
-    lines.push(`  ${chalk.gray('SSL:')}          ${formatSSL(analysis.hosting.ssl)}`);
-    lines.push('');
-  }
-
-  // Hosting
-  if (showAll || options.hosting) {
-    lines.push(chalk.bold('🌍 Hosting'));
-    if (analysis.hosting.server) {
-      lines.push(`  ${chalk.gray('Server:')}       ${analysis.hosting.server}`);
+    if (data.host) {
+      console.log(`  ${chalk.bold('Hosting:')}      ${chalk.cyan(data.host)}`);
     }
-    if (analysis.hosting.ip) {
-      lines.push(`  ${chalk.gray('IP:')}           ${analysis.hosting.ip}`);
+    
+    if (data.technologies && data.technologies.length > 0) {
+      console.log();
+      console.log(chalk.gray('  All detected technologies:'));
+      
+      // Group by category
+      const grouped = data.technologies.reduce((acc, tech) => {
+        if (!acc[tech.category]) {
+          acc[tech.category] = [];
+        }
+        acc[tech.category].push(tech);
+        return acc;
+      }, {} as Record<string, typeof data.technologies>);
+      
+      Object.entries(grouped).forEach(([category, techs]) => {
+        console.log();
+        console.log(chalk.gray(`  ${category}:`));
+        techs.forEach(tech => {
+          const version = tech.version ? chalk.gray(` v${tech.version}`) : '';
+          const confidence = tech.confidence === 'high' ? chalk.green('●') : 
+                           tech.confidence === 'medium' ? chalk.yellow('●') : 
+                           chalk.gray('●');
+          console.log(`    ${confidence} ${chalk.white(tech.name)}${version}`);
+        });
+      });
+    } else {
+      console.log(chalk.gray('  No technologies detected yet'));
     }
-    if (analysis.hosting.location) {
-      lines.push(`  ${chalk.gray('Location:')}     ${analysis.hosting.location}`);
-    }
-    if (analysis.hosting.cdn) {
-      lines.push(`  ${chalk.gray('CDN:')}          ${analysis.hosting.cdn}`);
-    }
-    if (analysis.domain_info.registeredAt) {
-      const age = analysis.domain_info.age || 'Unknown';
-      lines.push(`  ${chalk.gray('Online Since:')} ${analysis.domain_info.registeredAt} ${chalk.gray(`(${age})`)}`);
-    }
-    lines.push('');
-  }
-
-  lines.push(chalk.gray('━'.repeat(60)));
-  lines.push('');
-
-  return lines.join('\n');
-}
-
-function formatTime(ms: number): string {
-  if (ms < 1000) {
-    return `${ms.toFixed(0)}ms`;
-  } else {
-    return `${(ms / 1000).toFixed(1)}s`;
-  }
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) {
-    return `${bytes} B`;
-  } else if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`;
-  } else {
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  }
-}
-
-function formatSSL(ssl: { valid: boolean; daysUntilExpiry?: number }): string {
-  if (!ssl.valid) {
-    return chalk.red('✗ Invalid');
+    console.log();
   }
   
-  if (ssl.daysUntilExpiry !== undefined) {
-    const days = ssl.daysUntilExpiry;
-    const color = days > 30 ? chalk.green : days > 7 ? chalk.yellow : chalk.red;
-    return color(`✓ Valid (expires in ${days} days)`);
+  // SEO Information
+  if ((showAll || options.seo) && data.seo) {
+    console.log(chalk.bold.green('📊 SEO Metrics'));
+    console.log(chalk.gray('─'.repeat(60)));
+    
+    if (data.seo.score !== null && data.seo.score !== undefined) {
+      const scoreColor = data.seo.score >= 80 ? chalk.green :
+                        data.seo.score >= 60 ? chalk.blue :
+                        data.seo.score >= 40 ? chalk.yellow :
+                        chalk.red;
+      console.log(`  ${chalk.bold('SEO Score:')}    ${scoreColor(data.seo.score + '/100')}`);
+    }
+    
+    if (data.seo.hasSSL !== undefined) {
+      const sslIcon = data.seo.hasSSL ? chalk.green('✓') : chalk.red('✗');
+      console.log(`  ${chalk.bold('SSL/HTTPS:')}    ${sslIcon} ${data.seo.hasSSL ? 'Enabled' : 'Disabled'}`);
+    }
+    
+    if (data.seo.mobileOptimized !== undefined) {
+      const mobileIcon = data.seo.mobileOptimized ? chalk.green('✓') : chalk.red('✗');
+      console.log(`  ${chalk.bold('Mobile:')}       ${mobileIcon} ${data.seo.mobileOptimized ? 'Optimized' : 'Not optimized'}`);
+    }
+    
+    if (data.seo.wordCount) {
+      console.log(`  ${chalk.bold('Word Count:')}   ${chalk.white(data.seo.wordCount.toLocaleString())}`);
+    }
+    
+    if (options.verbose && data.seo.title) {
+      console.log();
+      console.log(chalk.gray('  Title:'));
+      console.log(`    ${chalk.white(data.seo.title)}`);
+    }
+    
+    if (options.verbose && data.seo.description) {
+      console.log();
+      console.log(chalk.gray('  Description:'));
+      console.log(`    ${chalk.white(data.seo.description)}`);
+    }
+    
+    console.log();
   }
   
-  return chalk.green('✓ Valid');
+  // Performance Metrics
+  if ((showAll || options.performance) && data.performance) {
+    console.log(chalk.bold.magenta('⚡ Performance'));
+    console.log(chalk.gray('─'.repeat(60)));
+    
+    if (data.performance.responseTime) {
+      const timeColor = data.performance.responseTime < 200 ? chalk.green :
+                       data.performance.responseTime < 500 ? chalk.yellow :
+                       chalk.red;
+      console.log(`  ${chalk.bold('Response Time:')} ${timeColor(data.performance.responseTime + 'ms')}`);
+    }
+    
+    if (data.performance.pageSize) {
+      console.log(`  ${chalk.bold('Page Size:')}     ${chalk.white(formatBytes(data.performance.pageSize))}`);
+    }
+    
+    if (data.performance.statusCode) {
+      const statusColor = data.performance.statusCode === 200 ? chalk.green : chalk.red;
+      console.log(`  ${chalk.bold('Status Code:')}   ${statusColor(data.performance.statusCode)}`);
+    }
+    
+    console.log();
+  }
+  
+  // Hosting Information
+  if ((showAll || options.hosting) && data.host) {
+    console.log(chalk.bold.yellow('🌐 Hosting'));
+    console.log(chalk.gray('─'.repeat(60)));
+    console.log(`  ${chalk.bold('Provider:')}      ${chalk.white(data.host)}`);
+    
+    if (data.onlineSince) {
+      console.log(`  ${chalk.bold('Online Since:')}  ${chalk.white(formatRelativeTime(data.onlineSince))}`);
+    }
+    
+    console.log();
+  }
+  
+  // Footer
+  console.log(chalk.gray('─'.repeat(60)));
+  console.log(chalk.gray('  Powered by SiteSpecs.com'));
+  console.log(chalk.gray('  For more details, visit: ') + chalk.cyan(`https://sitespecs.com/analyze/${data.domain}`));
+  console.log();
 }
