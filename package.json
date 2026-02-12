@@ -10,7 +10,12 @@
     "build": "tsc",
     "dev": "tsx src/cli.ts",
     "prepublishOnly": "bun run build",
-    "test": "bun test"
+    "test": "bun test",
+    "start": "node dist/cli.js",
+    "lint": "tsc --noEmit",
+    "test:webhook-contract": "bun test",
+    "test:smoke": "bun test",
+    "test:e2e": "bun run test:webhook-contract"
   },
   "keywords": [
     "cli",
