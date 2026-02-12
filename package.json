@@ -13,7 +13,7 @@
     "test": "bun test",
     "start": "node dist/cli.js",
     "lint": "tsc --noEmit",
-    "test:webhook-contract": "bun test",
+    "test:webhook-contract": "bun test tests/api-formatters.test.ts tests/api-fetch-analysis.test.ts tests/analyze-command.test.ts",
     "test:smoke": "bun test",
     "test:e2e": "bun run test:webhook-contract"
   },
