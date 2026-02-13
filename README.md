@@ -28,6 +28,15 @@ specs example.com --profile ci --diff baseline.json
 # report: verbose human-readable output
 specs example.com --profile report
 
+# GitHub Actions (copy/paste step snippet)
+# 1) capture a baseline once
+specs baseline example.com --out baseline.json
+# 2) generate a ready-to-paste CI step snippet
+specs gha example.com --baseline baseline.json
+# output:
+# - name: Specs CI
+#   run: npx -y @sitespecs/specs@latest ci example.com --baseline baseline.json
+
 # Check specific aspects
 specs example.com --tech
 specs example.com --seo

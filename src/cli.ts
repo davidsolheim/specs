@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import { analyzeCommand } from './commands/analyze';
 import { baselineCommand } from './commands/baseline';
 import { ciCommand } from "./commands/ci";
+import { ghaCommand } from './commands/gha';
 
 const program = new Command();
 
@@ -30,6 +31,13 @@ program
   .argument("<domain>")
   .option("--baseline <path>")
   .action((domain: string, opts: { baseline?: string }) => ciCommand(domain, { baseline: opts.baseline }));
+
+program
+  .command('gha')
+  .description('Print a copy/paste GitHub Actions step snippet for specs ci')
+  .argument('<domain>', 'Domain to analyze in CI (e.g., example.com)')
+  .option('--baseline <path>', 'Path to a baseline analysis JSON file')
+  .action((domain: string, opts: { baseline?: string }) => ghaCommand(domain, { baseline: opts.baseline }));
 
 program
   .argument('<domain>', 'Domain to analyze (e.g., example.com)')
