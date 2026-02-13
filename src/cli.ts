@@ -15,6 +15,10 @@ program
   .option('-v, --verbose', 'Show detailed information')
   .option('-j, --json', 'Output as JSON')
   .option('--summary', 'Print a single-line CI/log-friendly summary (overrides other output modes)')
+  .option(
+    '--summary-json',
+    'Print a single-line JSON verdict summary (overrides other output modes and prints exactly one stdout line)'
+  )
   .option('--save <path>', 'Save the raw analysis JSON to a file')
   .option('--diff <path>', 'Compare against a baseline analysis JSON file (summary mode only)')
   .option(

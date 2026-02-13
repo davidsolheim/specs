@@ -10,6 +10,7 @@ interface AnalyzeOptions {
   verbose?: boolean;
   json?: boolean;
   summary?: boolean;
+  summaryJson?: boolean;
   diff?: string;
   topChanges?: number;
   failOnDiff?: boolean;
@@ -25,9 +26,140 @@ async function saveAnalysisJson(savePath: string, data: unknown) {
   await writeFile(savePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
+type SummaryJsonOutput = {
+  ok: boolean;
+  domain: string;
+  drift_changed: number;
+  drift_added: number;
+  drift_removed: number;
+  top_changed?: string[];
+  top_added?: string[];
+  top_removed?: string[];
+  exit: number;
+  error: string | null;
+};
+
 export async function analyzeCommand(domain: string, options: AnalyzeOptions) {
   // Normalize domain
   const normalizedDomain = domain.replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/$/, '');
+
+  if (options.summaryJson) {
+    const baselinePath = options.diff;
+
+    const emit = (out: SummaryJsonOutput) => {
+      // Must be exactly one line on stdout with no additional noise.
+      console.log(JSON.stringify(out));
+    };
+
+    const exitWith = (out: SummaryJsonOutput) => {
+      emit(out);
+      if (out.exit !== 0) process.exit(out.exit);
+    };
+
+    const baseOut = (overrides: Partial<SummaryJsonOutput>): SummaryJsonOutput => ({
+      ok: false,
+      domain: normalizedDomain,
+      drift_changed: 0,
+      drift_added: 0,
+      drift_removed: 0,
+      exit: 1,
+      error: null,
+      ...overrides,
+    });
+
+    const topN = options.topChanges;
+    if (topN !== undefined) {
+      if (!Number.isInteger(topN) || topN <= 0) {
+        exitWith(
+          baseOut({
+            ok: false,
+            exit: 2,
+            error: `invalid_top_changes: ${String(topN)}`,
+          })
+        );
+        return;
+      }
+      if (!baselinePath) {
+        exitWith(baseOut({ ok: false, exit: 2, error: 'baseline_missing' }));
+        return;
+      }
+    }
+
+    if (options.failOnDiff && !baselinePath) {
+      exitWith(baseOut({ ok: false, exit: 2, error: 'baseline_missing' }));
+      return;
+    }
+
+    let baselineJson: unknown | undefined;
+    if (baselinePath) {
+      let raw: string;
+      try {
+        raw = await readFile(baselinePath, 'utf8');
+      } catch {
+        exitWith(baseOut({ ok: false, exit: 2, error: `baseline_missing: ${baselinePath}` }));
+        return;
+      }
+
+      try {
+        baselineJson = JSON.parse(raw);
+      } catch {
+        exitWith(baseOut({ ok: false, exit: 2, error: `baseline_parse_error: ${baselinePath}` }));
+        return;
+      }
+    }
+
+    let data: unknown;
+    try {
+      data = await fetchAnalysis(normalizedDomain);
+    } catch (error) {
+      exitWith(baseOut({ ok: false, exit: 1, error: 'api_error' }));
+      return;
+    }
+
+    if (options.save) {
+      try {
+        await saveAnalysisJson(options.save, data);
+      } catch {
+        exitWith(baseOut({ ok: false, exit: 2, error: `save_error: ${options.save}` }));
+        return;
+      }
+    }
+
+    if (baselinePath) {
+      const { changed, added, removed } = computeJsonDriftCounts(baselineJson, data);
+      const drift = changed + added + removed;
+      const exit = options.failOnDiff && drift > 0 ? 1 : 0;
+
+      const out: SummaryJsonOutput = {
+        ok: exit === 0,
+        domain: normalizedDomain,
+        exit,
+        drift_changed: changed,
+        drift_added: added,
+        drift_removed: removed,
+        error: null,
+      };
+
+      if (topN !== undefined) {
+        const details = computeJsonDriftDetails(baselineJson, data);
+        out.top_changed = details.changedPaths.slice(0, topN);
+        out.top_added = details.addedPaths.slice(0, topN);
+        out.top_removed = details.removedPaths.slice(0, topN);
+      }
+
+      exitWith(out);
+      return;
+    }
+
+    emit(
+      baseOut({
+        ok: true,
+        exit: 0,
+        error: null,
+      })
+    );
+    return;
+  }
 
   if (options.summary) {
     let baselineJson: unknown | undefined;
