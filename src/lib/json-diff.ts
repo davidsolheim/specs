@@ -46,26 +46,49 @@ export function computeJsonDriftCounts(baseline: unknown, current: unknown): {
   added: number;
   removed: number;
 } {
+  const details = computeJsonDriftDetails(baseline, current);
+  return { changed: details.changed, added: details.added, removed: details.removed };
+}
+
+export function computeJsonDriftDetails(baseline: unknown, current: unknown): {
+  changed: number;
+  added: number;
+  removed: number;
+  changedPaths: string[];
+  addedPaths: string[];
+  removedPaths: string[];
+} {
   const baselineMap = flattenJsonToLeafMap(baseline);
   const currentMap = flattenJsonToLeafMap(current);
 
-  let changed = 0;
-  let added = 0;
-  let removed = 0;
+  const changedPaths: string[] = [];
+  const addedPaths: string[] = [];
+  const removedPaths: string[] = [];
 
   for (const [path, baselineValue] of baselineMap.entries()) {
     if (!currentMap.has(path)) {
-      removed++;
+      removedPaths.push(path);
       continue;
     }
 
     const currentValue = currentMap.get(path);
-    if (currentValue !== baselineValue) changed++;
+    if (currentValue !== baselineValue) changedPaths.push(path);
   }
 
   for (const path of currentMap.keys()) {
-    if (!baselineMap.has(path)) added++;
+    if (!baselineMap.has(path)) addedPaths.push(path);
   }
 
-  return { changed, added, removed };
+  changedPaths.sort((a, b) => a.localeCompare(b));
+  addedPaths.sort((a, b) => a.localeCompare(b));
+  removedPaths.sort((a, b) => a.localeCompare(b));
+
+  return {
+    changed: changedPaths.length,
+    added: addedPaths.length,
+    removed: removedPaths.length,
+    changedPaths,
+    addedPaths,
+    removedPaths,
+  };
 }

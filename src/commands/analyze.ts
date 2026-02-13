@@ -2,7 +2,7 @@ import ora from 'ora';
 import chalk from 'chalk';
 import { readFile } from 'node:fs/promises';
 import { fetchAnalysis, type AnalysisResponse } from '../lib/api';
-import { computeJsonDriftCounts } from '../lib/json-diff';
+import { computeJsonDriftCounts, computeJsonDriftDetails } from '../lib/json-diff';
 import { formatOutput } from '../lib/formatter';
 
 interface AnalyzeOptions {
@@ -10,6 +10,7 @@ interface AnalyzeOptions {
   json?: boolean;
   summary?: boolean;
   diff?: string;
+  topChanges?: number;
   failOnDiff?: boolean;
   tech?: boolean;
   seo?: boolean;
@@ -25,6 +26,14 @@ export async function analyzeCommand(domain: string, options: AnalyzeOptions) {
     let baselineJson: unknown | undefined;
 
     if (options.diff) {
+      if (options.topChanges !== undefined) {
+        const n = options.topChanges;
+        if (!Number.isInteger(n) || n <= 0) {
+          console.log(`SUMMARY ${normalizedDomain} exit=2`);
+          process.exit(2);
+        }
+      }
+
       try {
         const raw = await readFile(options.diff, 'utf8');
         baselineJson = JSON.parse(raw);
@@ -48,8 +57,18 @@ export async function analyzeCommand(domain: string, options: AnalyzeOptions) {
         const drift = changed + added + removed;
         const exit = options.failOnDiff && drift > 0 ? 1 : 0;
 
+        let extra = '';
+        if (options.topChanges !== undefined) {
+          const n = options.topChanges;
+          const details = computeJsonDriftDetails(baselineJson, data);
+          const topChanged = details.changedPaths.slice(0, n).join(',');
+          const topAdded = details.addedPaths.slice(0, n).join(',');
+          const topRemoved = details.removedPaths.slice(0, n).join(',');
+          extra = ` top_changed=${topChanged} top_added=${topAdded} top_removed=${topRemoved}`;
+        }
+
         console.log(
-          `SUMMARY ${data.domain} status=${status} tech=${tech} seo=${seo} perf=${perf} hosting=${hosting} drift_changed=${changed} drift_added=${added} drift_removed=${removed} exit=${exit}`
+          `SUMMARY ${data.domain} status=${status} tech=${tech} seo=${seo} perf=${perf} hosting=${hosting} drift_changed=${changed} drift_added=${added} drift_removed=${removed} exit=${exit}${extra}`
         );
 
         if (exit !== 0) process.exit(exit);

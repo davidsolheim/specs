@@ -16,6 +16,11 @@ program
   .option('-j, --json', 'Output as JSON')
   .option('--summary', 'Print a single-line CI/log-friendly summary (overrides other output modes)')
   .option('--diff <path>', 'Compare against a baseline analysis JSON file (summary mode only)')
+  .option(
+    '--top-changes <n>',
+    'In --summary --diff mode, include the top N changed/added/removed leaf paths (lexicographic)',
+    (value: string) => parseInt(value, 10)
+  )
   .option('--fail-on-diff', 'Exit 1 when drift is detected (requires --summary --diff)')
   .option('--tech', 'Show only technology stack')
   .option('--seo', 'Show only SEO information')

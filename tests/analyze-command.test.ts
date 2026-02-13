@@ -122,6 +122,82 @@ describe('analyze command deterministic fixtures', () => {
     expect(line).toContain('exit=0');
   });
 
+  test('summary+diff+top-changes: prints drift counts and top leaf paths (single-line)', async () => {
+    const payload = {
+      domain: 'example.com',
+      url: 'https://example.com',
+      status: 'online',
+      technologies: [{ name: 'Bun' }, { name: 'TypeScript' }],
+      seo: { score: 92 },
+      extraField: 123,
+    };
+
+    const baseline = { ...payload, seo: { score: 91 }, host: 'ExampleHost' } as any;
+    delete baseline.extraField;
+
+    const dir = await mkdtemp(join(tmpdir(), 'specs-tests-'));
+    const baselinePath = join(dir, 'baseline.json');
+    await writeFile(baselinePath, JSON.stringify(baseline), 'utf8');
+
+    const fetchMock = mock(async () => new Response(JSON.stringify(payload), { status: 200 }));
+    global.fetch = fetchMock as typeof fetch;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await analyzeCommand('example.com', { summary: true, diff: baselinePath, topChanges: 3 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(logMock).toHaveBeenCalledTimes(1);
+
+    const line = String((logMock as any).mock.calls[0][0]);
+    expect(line.startsWith('SUMMARY ')).toBe(true);
+    expect(line).toContain('drift_changed=1');
+    expect(line).toContain('drift_added=1');
+    expect(line).toContain('drift_removed=1');
+    expect(line).toContain('exit=0');
+    expect(line).toContain('top_changed=seo.score');
+    expect(line).toContain('top_added=extraField');
+    expect(line).toContain('top_removed=host');
+  });
+
+  test('summary+diff+top-changes invalid n: exits 2 and prints exactly SUMMARY <domain> exit=2', async () => {
+    const payload = {
+      domain: 'example.com',
+      url: 'https://example.com',
+      status: 'online',
+      technologies: [],
+      seo: { score: 92 },
+    };
+
+    const baseline = { ...payload, seo: { score: 91 } };
+
+    const dir = await mkdtemp(join(tmpdir(), 'specs-tests-'));
+    const baselinePath = join(dir, 'baseline.json');
+    await writeFile(baselinePath, JSON.stringify(baseline), 'utf8');
+
+    global.fetch = mock(async () => new Response(JSON.stringify(payload), { status: 200 })) as typeof fetch;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    await expect(
+      analyzeCommand('example.com', { summary: true, diff: baselinePath, topChanges: 0 })
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect((logMock as any).mock.calls[0][0]).toBe('SUMMARY example.com exit=2');
+    expect(exitMock).toHaveBeenCalledWith(2);
+  });
+
   test('summary+diff+fail-on-diff: exits 1 when drift>0', async () => {
     const payload = {
       domain: 'example.com',
