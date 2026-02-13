@@ -14,6 +14,7 @@ program
   .argument('<domain>', 'Domain to analyze (e.g., example.com)')
   .option('-v, --verbose', 'Show detailed information')
   .option('-j, --json', 'Output as JSON')
+  .option('--profile <ci|report>', 'Apply preset defaults (ci: summary-json + fail-on-diff when --diff, report: verbose)')
   .option('--summary', 'Print a single-line CI/log-friendly summary (overrides other output modes)')
   .option(
     '--summary-json',

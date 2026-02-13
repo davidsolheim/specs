@@ -636,4 +636,79 @@ describe('analyze command deterministic fixtures', () => {
       error: 'api_error',
     });
   });
+
+  test('profile=ci: defaults to summary-json output mode (single-line JSON)', async () => {
+    const payload = {
+      domain: 'example.com',
+      url: 'https://example.com',
+      status: 'online',
+      technologies: [],
+    };
+
+    global.fetch = mock(async () => new Response(JSON.stringify(payload), { status: 200 })) as typeof fetch;
+
+    const logMock = mock(() => {});
+    const errMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = errMock as typeof console.error;
+
+    await analyzeCommand('example.com', { profile: 'ci' } as any);
+
+    expect(errMock).toHaveBeenCalledTimes(0);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: true,
+      domain: 'example.com',
+      drift_changed: 0,
+      drift_added: 0,
+      drift_removed: 0,
+      exit: 0,
+      error: null,
+    });
+  });
+
+  test('profile=ci+diff: defaults fail-on-diff and exits 1 on drift', async () => {
+    const payload = {
+      domain: 'example.com',
+      url: 'https://example.com',
+      status: 'online',
+      technologies: [],
+      seo: { score: 92 },
+    };
+
+    const baseline = { ...payload, seo: { score: 91 } };
+
+    const dir = await mkdtemp(join(tmpdir(), 'specs-tests-'));
+    const baselinePath = join(dir, 'baseline.json');
+    await writeFile(baselinePath, JSON.stringify(baseline), 'utf8');
+
+    global.fetch = mock(async () => new Response(JSON.stringify(payload), { status: 200 })) as typeof fetch;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await expect(analyzeCommand('example.com', { profile: 'ci', diff: baselinePath } as any)).rejects.toThrow(
+      'EXIT_1'
+    );
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: false,
+      domain: 'example.com',
+      exit: 1,
+      drift_changed: 1,
+      drift_added: 0,
+      drift_removed: 0,
+      error: null,
+    });
+  });
 });

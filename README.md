@@ -20,6 +20,14 @@ specs example.com --verbose
 # JSON output
 specs example.com --json
 
+# Preset profiles
+# ci: single-line JSON verdict (and when used with --diff, defaults to failing on drift)
+specs example.com --profile ci
+specs example.com --profile ci --diff baseline.json
+#
+# report: verbose human-readable output
+specs example.com --profile report
+
 # Check specific aspects
 specs example.com --tech
 specs example.com --seo
