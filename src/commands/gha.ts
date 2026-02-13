@@ -8,6 +8,7 @@ export async function ghaCommand(
     baseline?: string;
     workflow?: boolean;
     name?: string;
+    runsOn?: string;
     manual?: boolean;
     pullRequest?: boolean;
     push?: boolean;
@@ -54,6 +55,18 @@ export async function ghaCommand(
     return;
   }
 
+  if (options.runsOn !== undefined && !options.workflow) {
+    console.error("WORKFLOW_RUNS_ON_REQUIRES_WORKFLOW");
+    process.exit(2);
+    return;
+  }
+
+  if (options.runsOn !== undefined && options.workflow && options.runsOn.trim() === "") {
+    console.error("WORKFLOW_RUNS_ON_INVALID");
+    process.exit(2);
+    return;
+  }
+
   if (options.manual === true && !options.workflow) {
     console.error('WORKFLOW_MANUAL_REQUIRES_WORKFLOW');
     process.exit(2);
@@ -90,6 +103,7 @@ export async function ghaCommand(
 
   if (options.workflow) {
     const branch = options.branch ?? 'main';
+    const runsOn = options.runsOn ?? 'ubuntu-latest';
 
     let onBlock = "on:\n" + "  workflow_dispatch:\n";
     if (options.pullRequest) onBlock += "  pull_request:\n" + `    branches: [${branch}]\n`;
@@ -106,7 +120,7 @@ export async function ghaCommand(
       onBlock +
       "jobs:\n" +
       "  sitespecs:\n" +
-      "    runs-on: ubuntu-latest\n" +
+      "    runs-on: " + runsOn + "\n" +
       "    steps:\n" +
       "      - uses: actions/checkout@v4\n" +
       "      - name: Specs CI\n" +

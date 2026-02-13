@@ -38,6 +38,7 @@ program
   .argument('<domain>', 'Domain to analyze in CI (e.g., example.com)')
   .option('--baseline <path>', 'Path to a baseline analysis JSON file')
   .option('--workflow', 'Print a full GitHub Actions workflow YAML')
+  .option('--runs-on <label>', 'Set the workflow job runner (requires --workflow)')
   .option("--manual", "Include workflow_dispatch trigger")
   .option('--pull-request', 'Add a pull_request trigger to the workflow YAML (requires --workflow)')
   .option('--push', 'Add a push trigger to the workflow YAML (requires --workflow)')
@@ -51,6 +52,7 @@ program
     opts: {
       baseline?: string;
       workflow?: boolean;
+      runsOn?: string;
       manual?: boolean;
       pullRequest?: boolean;
       push?: boolean;
@@ -64,6 +66,7 @@ program
     ghaCommand(domain, {
       baseline: opts.baseline,
       workflow: opts.workflow,
+      runsOn: opts.runsOn,
       manual: opts.manual,
       pullRequest: opts.pullRequest,
       push: opts.push,
