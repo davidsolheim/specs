@@ -1,0 +1,13 @@
+# Evidence: specs CLI --summary-json feature
+# Timestamp: 2026-02-13 01:45 MST
+
+git rev-parse HEAD:
+92d7400b4e8333717a68aab5ae3f2d1f1ad8502b
+
+bun test:
+bun test v1.3.9 (cf6cdbbb)
+
+Notes:
+- Updated --summary-json output contract to stable keys: ok, domain, drift_*, top_*, exit, error.
+- ok=false when --fail-on-diff triggers exit=1 due to drift.
+- Deterministic baseline/save/api error strings; exactly one JSON line to stdout.
