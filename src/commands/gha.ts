@@ -7,9 +7,11 @@ export async function ghaCommand(
   options: {
     baseline?: string;
     workflow?: boolean;
+    timeoutMinutes?: number | string;
     name?: string;
     runsOn?: string;
     nodeVersion?: string;
+    timeoutMinutes?: number | string;
     manual?: boolean;
     pullRequest?: boolean;
     push?: boolean;
@@ -30,6 +32,22 @@ export async function ghaCommand(
     console.error("GHA_BASELINE_REQUIRED");
     process.exit(2);
     return;
+  }
+
+  if (options.timeoutMinutes !== undefined && !options.workflow) {
+    console.error("WORKFLOW_TIMEOUT_MINUTES_REQUIRES_WORKFLOW");
+    process.exit(2);
+    return;
+  }
+
+  let timeout: number | undefined;
+  if (options.workflow && options.timeoutMinutes !== undefined) {
+    timeout = Number(String(options.timeoutMinutes).trim());
+    if (!Number.isInteger(timeout) || timeout < 1) {
+      console.error("WORKFLOW_TIMEOUT_MINUTES_INVALID");
+      process.exit(2);
+      return;
+    }
   }
 
   if (options.force && options.write === undefined) {
@@ -76,6 +94,27 @@ export async function ghaCommand(
 
   if (options.nodeVersion !== undefined && options.workflow && options.nodeVersion.trim() === "") {
     console.error("WORKFLOW_NODE_VERSION_INVALID");
+    process.exit(2);
+    return;
+  }
+
+  if (options.timeoutMinutes !== undefined && !options.workflow) {
+    console.error('WORKFLOW_TIMEOUT_MINUTES_REQUIRES_WORKFLOW');
+    process.exit(2);
+    return;
+  }
+
+  const parsedTimeoutMinutes =
+    options.workflow && options.timeoutMinutes !== undefined
+      ? Number(String(options.timeoutMinutes).trim())
+      : undefined;
+
+  if (
+    options.workflow &&
+    options.timeoutMinutes !== undefined &&
+    (!Number.isInteger(parsedTimeoutMinutes) || parsedTimeoutMinutes < 1)
+  ) {
+    console.error('WORKFLOW_TIMEOUT_MINUTES_INVALID');
     process.exit(2);
     return;
   }
@@ -134,6 +173,9 @@ export async function ghaCommand(
       "jobs:\n" +
       "  sitespecs:\n" +
       "    runs-on: " + runsOn + "\n" +
+      (parsedTimeoutMinutes !== undefined
+        ? "    timeout-minutes: " + parsedTimeoutMinutes + "\n"
+        : "") +
       "    steps:\n" +
       "      - uses: actions/checkout@v4\n" +
       (options.nodeVersion !== undefined

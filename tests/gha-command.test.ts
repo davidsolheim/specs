@@ -198,6 +198,69 @@ describe('gha command', () => {
     expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_RUNS_ON_INVALID');
   });
 
+  test('workflow + timeoutMinutes: emits fixture', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      timeoutMinutes: 10,
+    } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(
+      await readFixture('workflow-timeout-minutes-10.yml'),
+    );
+  });
+
+  test('--timeout-minutes without --workflow: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', timeoutMinutes: 10 } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_TIMEOUT_MINUTES_REQUIRES_WORKFLOW');
+  });
+
+  test('workflow + --timeout-minutes invalid: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', workflow: true, timeoutMinutes: 0 } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', workflow: true, timeoutMinutes: 'abc' } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(2);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_TIMEOUT_MINUTES_INVALID');
+    expect(String((errMock as any).mock.calls[1][0])).toBe('WORKFLOW_TIMEOUT_MINUTES_INVALID');
+  });
+
   test('--pull-request without --workflow: exits 2 and prints deterministic stderr', async () => {
     const exitMock = mock((code?: number) => {
       throw new Error(`EXIT_${code ?? 'undefined'}`);

@@ -39,6 +39,7 @@ program
   .option('--baseline <path>', 'Path to a baseline analysis JSON file')
   .option('--workflow', 'Print a full GitHub Actions workflow YAML')
   .option('--runs-on <label>', 'Set the workflow job runner (requires --workflow)')
+  .option("--timeout-minutes <n>", "Job timeout in minutes")
   .option('--node-version <version>', 'Set the workflow Node.js version (requires --workflow)')
   .option("--manual", "Include workflow_dispatch trigger")
   .option('--pull-request', 'Add a pull_request trigger to the workflow YAML (requires --workflow)')
@@ -54,6 +55,7 @@ program
       baseline?: string;
       workflow?: boolean;
       runsOn?: string;
+      timeoutMinutes?: string;
       nodeVersion?: string;
       manual?: boolean;
       pullRequest?: boolean;
@@ -69,6 +71,7 @@ program
       baseline: opts.baseline,
       workflow: opts.workflow,
       runsOn: opts.runsOn,
+      timeoutMinutes: opts.timeoutMinutes,
       nodeVersion: opts.nodeVersion,
       manual: opts.manual,
       pullRequest: opts.pullRequest,
