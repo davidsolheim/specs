@@ -2,6 +2,7 @@
 
 import { Command } from 'commander';
 import { analyzeCommand } from './commands/analyze';
+import { baselineCommand } from './commands/baseline';
 
 const program = new Command();
 
@@ -9,6 +10,14 @@ program
   .name('specs')
   .description('Analyze website tech stack, hosting, and performance')
   .version('0.1.0');
+
+program
+  .command('baseline')
+  .description('Save raw analysis JSON to a baseline file')
+  .argument('<domain>', 'Domain to baseline (e.g., example.com)')
+  .requiredOption('--out <path>', 'Path to write the baseline JSON file')
+  .option('--profile <ci|report>', 'Rejected for baseline (usage error)')
+  .action((domain: string, options: { out?: string; profile?: string }) => baselineCommand(domain, options));
 
 program
   .argument('<domain>', 'Domain to analyze (e.g., example.com)')
