@@ -5,6 +5,10 @@ import { join } from 'node:path';
 import { ghaCommand } from '../src/commands/gha';
 
 describe('gha command', () => {
+  async function readFixture(name: string): Promise<string> {
+    return await readFile(new URL(`./fixtures/gha/${name}`, import.meta.url), 'utf8');
+  }
+
   const originalConsoleLog = console.log;
   const originalConsoleError = console.error;
   const originalProcessExit = process.exit;
@@ -74,8 +78,29 @@ describe('gha command', () => {
 
     expect(logMock).toHaveBeenCalledTimes(1);
     expect(String((logMock as any).mock.calls[0][0])).toBe(
-      'name: SiteSpecs\non: [push, pull_request]\njobs:\n  sitespecs:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - name: Specs CI\n        run: npx -y @sitespecs/specs@latest ci example.com --baseline baseline.json\n',
+      await readFixture('workflow.yml'),
     );
+  });
+
+  test('--pull-request without --workflow: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', pullRequest: true } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_PULL_REQUEST_REQUIRES_WORKFLOW');
   });
 
   test('--schedule without --workflow: exits 2 and prints deterministic stderr', async () => {
@@ -111,8 +136,23 @@ describe('gha command', () => {
 
     expect(logMock).toHaveBeenCalledTimes(1);
     expect(String((logMock as any).mock.calls[0][0])).toBe(
-      "name: SiteSpecs\non:\n  push:\n  pull_request:\n  schedule:\n    - cron: '0 3 * * *'\njobs:\n  sitespecs:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - name: Specs CI\n        run: npx -y @sitespecs/specs@latest ci example.com --baseline baseline.json\n",
+      await readFixture('workflow-schedule.yml'),
     );
+  });
+
+  test('workflow + schedule + pull-request: prints full workflow YAML with pull_request trigger', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      schedule: '0 3 * * *',
+      pullRequest: true,
+    } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(await readFixture('workflow-schedule-pull-request.yml'));
   });
 
   test('workflow + schedule + write: writes YAML with schedule block to disk', async () => {
@@ -138,7 +178,7 @@ describe('gha command', () => {
 
     const saved = await readFile(outPath, 'utf8');
     expect(saved).toBe(
-      "name: SiteSpecs\non:\n  push:\n  pull_request:\n  schedule:\n    - cron: '0 3 * * *'\njobs:\n  sitespecs:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - name: Specs CI\n        run: npx -y @sitespecs/specs@latest ci example.com --baseline baseline.json\n",
+      await readFixture('workflow-schedule.yml'),
     );
   });
 
@@ -182,7 +222,7 @@ describe('gha command', () => {
 
     const saved = await readFile(outPath, 'utf8');
     expect(saved).toBe(
-      'name: SiteSpecs\non: [push, pull_request]\njobs:\n  sitespecs:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - name: Specs CI\n        run: npx -y @sitespecs/specs@latest ci example.com --baseline baseline.json\n',
+      await readFixture('workflow.yml'),
     );
   });
 

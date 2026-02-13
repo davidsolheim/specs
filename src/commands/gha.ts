@@ -7,6 +7,7 @@ export async function ghaCommand(
   options: {
     baseline?: string;
     workflow?: boolean;
+    pullRequest?: boolean;
     version?: string;
     write?: string;
     force?: boolean;
@@ -37,6 +38,12 @@ export async function ghaCommand(
     return;
   }
 
+  if (options.pullRequest !== undefined && !options.workflow) {
+    console.error('WORKFLOW_PULL_REQUEST_REQUIRES_WORKFLOW');
+    process.exit(2);
+    return;
+  }
+
   if (options.schedule !== undefined && !options.workflow) {
     console.error('WORKFLOW_SCHEDULE_REQUIRES_WORKFLOW');
     process.exit(2);
@@ -48,16 +55,12 @@ export async function ghaCommand(
     : "@sitespecs/specs@latest";
 
   if (options.workflow) {
-    const onBlock = options.schedule
-      ?
-        "on:\n" +
-        "  push:\n" +
-        "  pull_request:\n" +
-        "  schedule:\n" +
-        "    - cron: '" +
-        options.schedule +
-        "'\n"
-      : "on: [push, pull_request]\n";
+    let onBlock = "on:\n" + "  workflow_dispatch:\n";
+    if (options.pullRequest) onBlock += "  pull_request:\n";
+    if (options.schedule) {
+      onBlock +=
+        "  schedule:\n" + "    - cron: '" + options.schedule + "'\n";
+    }
 
     const yaml =
       "name: SiteSpecs\n" +
