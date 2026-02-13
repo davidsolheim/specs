@@ -9,3 +9,9 @@
 
 ## bun test (output summary)
 bun test v1.3.9 (cf6cdbbb)
+
+## git log -1 --oneline (after commit)
+bf41721 feat(gha): add --manual trigger flag
+
+## git status --porcelain (after commit)
+ M projects/evidence/specs-cli-gha-manual-flag-feature-2026-02-13-0830MST.txt
