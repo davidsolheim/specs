@@ -1,0 +1,670 @@
+import { afterEach, describe, expect, mock, test } from 'bun:test';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { ghaCommand } from '../src/commands/gha';
+
+describe('gha command', () => {
+  async function readFixture(name: string): Promise<string> {
+    return await readFile(new URL(`./fixtures/gha/${name}`, import.meta.url), 'utf8');
+  }
+
+  const originalConsoleLog = console.log;
+  const originalConsoleError = console.error;
+  const originalProcessExit = process.exit;
+
+  afterEach(() => {
+    console.log = originalConsoleLog;
+    console.error = originalConsoleError;
+    process.exit = originalProcessExit;
+    mock.restore();
+  });
+
+  test('missing baseline: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(ghaCommand('example.com', {})).rejects.toThrow('EXIT_2');
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('GHA_BASELINE_REQUIRED');
+  });
+
+  test('missing domain: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(ghaCommand('', { baseline: 'baseline.json' })).rejects.toThrow('EXIT_2');
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('GHA_DOMAIN_REQUIRED');
+  });
+
+  test('success: prints exactly two YAML-ish lines', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await ghaCommand('example.com', { baseline: 'baseline.json' });
+
+    expect(errMock).not.toHaveBeenCalled();
+    expect(logMock).toHaveBeenCalledTimes(2);
+    expect(String((logMock as any).mock.calls[0][0])).toBe('- name: Specs CI');
+    expect(String((logMock as any).mock.calls[1][0])).toBe(
+      '  run: npx -y @sitespecs/specs@latest ci example.com --baseline baseline.json',
+    );
+  });
+
+  test('workflow: prints full workflow YAML with trailing newline', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', { baseline: 'baseline.json', workflow: true } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(
+      await readFixture('workflow.yml'),
+    );
+  });
+
+  test('workflow + --runs-on self-hosted: prints workflow YAML with custom runner', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      runsOn: 'self-hosted',
+    } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(
+      await readFixture('workflow-runs-on-self-hosted.yml'),
+    );
+  });
+
+  test('workflow + --node-version 20: prints workflow YAML with setup-node step', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      nodeVersion: '20',
+    } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(
+      await readFixture('workflow-node-version-20.yml'),
+    );
+  });
+
+  test('--runs-on without --workflow: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', runsOn: 'foo' } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_RUNS_ON_REQUIRES_WORKFLOW');
+  });
+
+  test('--node-version without --workflow: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', nodeVersion: '20' } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_NODE_VERSION_REQUIRES_WORKFLOW');
+  });
+
+  test('workflow + --node-version blank: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', workflow: true, nodeVersion: '   ' } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_NODE_VERSION_INVALID');
+  });
+
+  test('workflow + --runs-on blank: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', workflow: true, runsOn: '   ' } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_RUNS_ON_INVALID');
+  });
+
+  test('--pull-request without --workflow: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', pullRequest: true } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_PULL_REQUEST_REQUIRES_WORKFLOW');
+  });
+
+  test('--schedule without --workflow: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(ghaCommand('example.com', { baseline: 'baseline.json', schedule: '0 3 * * *' } as any)).rejects.toThrow(
+      'EXIT_2',
+    );
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_SCHEDULE_REQUIRES_WORKFLOW');
+  });
+
+  test('--push without --workflow: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(ghaCommand('example.com', { baseline: 'baseline.json', push: true } as any)).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_PUSH_REQUIRES_WORKFLOW');
+  });
+
+  test('--branch without --workflow: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', branch: 'main' } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_BRANCH_REQUIRES_WORKFLOW');
+  });
+
+  test('--name without --workflow: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', name: 'My Specs CI' } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_NAME_REQUIRES_WORKFLOW');
+  });
+
+  test('manual without workflow: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', manual: true } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_MANUAL_REQUIRES_WORKFLOW');
+  });
+
+  test('workflow + --name: prints workflow YAML with custom top-level name', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      name: 'My Specs CI',
+    } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(
+      await readFixture('workflow-name-my-specs-ci.yml'),
+    );
+  });
+
+  test('workflow + manual: prints workflow.yml fixture', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await ghaCommand('example.com', { baseline: 'baseline.json', workflow: true, manual: true } as any);
+
+    expect(errMock).not.toHaveBeenCalled();
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(await readFixture('workflow.yml'));
+  });
+
+  test('workflow + schedule: prints full workflow YAML with schedule block', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      schedule: '0 3 * * *',
+    } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(
+      await readFixture('workflow-schedule.yml'),
+    );
+  });
+
+  test('workflow + push: prints full workflow YAML with push trigger', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', { baseline: 'baseline.json', workflow: true, push: true } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(await readFixture('workflow-push.yml'));
+  });
+
+  test('workflow + push + branch: prints YAML with push.branches=[release] and workflow_dispatch', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      push: true,
+      branch: 'release',
+    } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(await readFixture('workflow-push-branch-release.yml'));
+  });
+
+  test('workflow + push + branch=master: prints workflow-push-branch-master.yml fixture', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', { baseline: 'baseline.json', workflow: true, push: true, branch: 'master' } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(await readFixture('workflow-push-branch-master.yml'));
+  });
+
+  test('workflow + pull-request + branch: prints YAML with pull_request.branches=[release] and workflow_dispatch', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      pullRequest: true,
+      branch: 'release',
+    } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(await readFixture('workflow-pull-request-branch-release.yml'));
+  });
+
+  test('workflow + pull-request + branch=develop: prints workflow-pull-request-branch-develop.yml fixture', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      pullRequest: true,
+      branch: 'develop',
+    } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(await readFixture('workflow-pull-request-branch-develop.yml'));
+  });
+
+  test('workflow + branch (no push/pull-request): prints normal workflow.yml fixture', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', { baseline: 'baseline.json', workflow: true, branch: 'release' } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(await readFixture('workflow.yml'));
+  });
+
+  test('workflow + schedule + pull-request: prints full workflow YAML with pull_request trigger', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      schedule: '0 3 * * *',
+      pullRequest: true,
+    } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(await readFixture('workflow-schedule-pull-request.yml'));
+  });
+
+  test('workflow + schedule + write: writes YAML with schedule block to disk', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'specs-tests-'));
+    const outPath = join(dir, 'workflow.yml');
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      schedule: '0 3 * * *',
+      write: outPath,
+    } as any);
+
+    expect(errMock).toHaveBeenCalledTimes(0);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(`WORKFLOW_SAVED path=${outPath}`);
+
+    const saved = await readFile(outPath, 'utf8');
+    expect(saved).toBe(
+      await readFixture('workflow-schedule.yml'),
+    );
+  });
+
+  test('write without workflow: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(ghaCommand('example.com', { baseline: 'baseline.json', write: 'workflow.yml' } as any)).rejects.toThrow(
+      'EXIT_2',
+    );
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_WRITE_REQUIRES_WORKFLOW');
+  });
+
+  test('workflow + write: writes YAML to disk and prints exactly one WORKFLOW_SAVED line', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'specs-tests-'));
+    const outPath = join(dir, 'nested', 'workflow.yml');
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await ghaCommand('example.com', { baseline: 'baseline.json', workflow: true, write: outPath } as any);
+
+    expect(errMock).toHaveBeenCalledTimes(0);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const line = String((logMock as any).mock.calls[0][0]);
+    expect(line).toBe(`WORKFLOW_SAVED path=${outPath}`);
+    expect(line.includes('name: SiteSpecs')).toBe(false);
+
+    const saved = await readFile(outPath, 'utf8');
+    expect(saved).toBe(
+      await readFixture('workflow.yml'),
+    );
+  });
+
+  test('workflow + write existing file (no --force): exits 2 with deterministic stderr and does not overwrite', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'specs-tests-'));
+    const outPath = join(dir, 'workflow.yml');
+
+    await writeFile(outPath, 'OLD', 'utf8');
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', workflow: true, write: outPath } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect((errMock as any).mock.calls.length).toBeGreaterThan(0);
+    const errs = (errMock as any).mock.calls.map((c: any[]) => String(c[0]));
+    for (const e of errs) expect(e).toBe(`WORKFLOW_OUT_EXISTS path=${outPath}`);
+
+    const saved = await readFile(outPath, 'utf8');
+    expect(saved).toBe('OLD');
+  });
+
+  test('workflow + write existing file (--force): overwrites and prints WORKFLOW_SAVED', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'specs-tests-'));
+    const outPath = join(dir, 'workflow.yml');
+
+    await writeFile(outPath, 'OLD', 'utf8');
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      write: outPath,
+      force: true,
+    } as any);
+
+    expect(errMock).toHaveBeenCalledTimes(0);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(`WORKFLOW_SAVED path=${outPath}`);
+
+    const saved = await readFile(outPath, 'utf8');
+    expect(saved).not.toBe('OLD');
+    expect(saved).toContain('name: SiteSpecs');
+    expect(saved).toContain('name: Specs CI');
+  });
+
+  test('workflow + --force without --write: exits 2 with deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', workflow: true, force: true } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_FORCE_INVALID');
+  });
+
+  test('workflow + write failure: exits 2 with deterministic stderr', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'specs-tests-'));
+    const outPath = join(dir, 'as-a-directory');
+    // Deterministic failure: attempting to write to a directory path.
+    await mkdir(outPath);
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', workflow: true, write: outPath } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe(`WORKFLOW_WRITE_FAILED path=${outPath}`);
+  });
+
+  test('pinned version snippet: uses @<version> in npx', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await ghaCommand('example.com', { baseline: 'baseline.json', version: '0.1.0' } as any);
+
+    const lines = (logMock as any).mock.calls.map((c: any[]) => String(c[0]));
+    expect(lines).toContain('  run: npx -y @sitespecs/specs@0.1.0 ci example.com --baseline baseline.json');
+  });
+
+  test('pinned version workflow: uses @<version> in YAML', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      version: '0.1.0',
+    } as any);
+
+    const calls = (logMock as any).mock.calls;
+    const last = String(calls[calls.length - 1][0]);
+    expect(last).toContain('run: npx -y @sitespecs/specs@0.1.0 ci example.com --baseline baseline.json');
+  });
+});

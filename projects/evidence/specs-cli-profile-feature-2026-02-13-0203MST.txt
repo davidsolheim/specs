@@ -1,0 +1,4 @@
+bun test v1.3.9 (cf6cdbbb)
+
+SHA256
+a7a902a7e08d1ec36f8c76516c36f76070094143cf51a4da68127dcbb047070c  projects/evidence/specs-cli-profile-feature-2026-02-13-0203MST.txt

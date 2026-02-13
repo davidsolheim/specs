@@ -1,0 +1,9 @@
+# Evidence: specs CLI baseline --stdout feature
+# Timestamp: 2026-02-13 03:00 MST
+
+git rev-parse HEAD:
+c968c8196c15cb9e7bc3933d4f0910bb9da2c33b
+
+bun test:
+bun test v1.3.9 (cf6cdbbb)
+4c82874594ad6b111a70ba745acdc1507cd0e09b3240ee24e02e9bf715ac02d7  projects/evidence/specs-cli-baseline-stdout-feature-2026-02-13-0300MST.txt

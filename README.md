@@ -20,6 +20,29 @@ specs example.com --verbose
 # JSON output
 specs example.com --json
 
+# Preset profiles
+# ci: single-line JSON verdict (and when used with --diff, defaults to failing on drift)
+specs example.com --profile ci
+specs example.com --profile ci --diff baseline.json
+#
+# report: verbose human-readable output
+specs example.com --profile report
+
+# GitHub Actions (copy/paste step snippet)
+# 1) capture a baseline once
+specs baseline example.com --out baseline.json
+# 2) generate a ready-to-paste CI step snippet
+specs gha example.com --baseline baseline.json
+# output:
+# - name: Specs CI
+#   run: npx -y @sitespecs/specs@latest ci example.com --baseline baseline.json
+
+# 3) or generate a minimal full GitHub Actions workflow YAML
+# (optional) pin trigger branch for --push/--pull-request when generating workflow
+specs gha example.com --baseline baseline.json --workflow --branch main
+# (optional) pin Node.js version for reproducible CI
+specs gha example.com --baseline baseline.json --workflow --node-version 20
+
 # Check specific aspects
 specs example.com --tech
 specs example.com --seo
