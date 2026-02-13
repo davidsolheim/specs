@@ -53,4 +53,33 @@ describe('analyze command deterministic fixtures', () => {
     await expect(analyzeCommand('example.com', { json: true })).rejects.toThrow('EXIT_1');
     expect(exitMock).toHaveBeenCalledWith(1);
   });
+
+  test('summary: prints single-line SUMMARY output and overrides other output modes', async () => {
+    const payload = {
+      domain: 'example.com',
+      url: 'https://example.com',
+      status: 'online',
+      technologies: [{ name: 'Bun' }, { name: 'TypeScript' }],
+      seo: { score: 92 },
+      host: 'ExampleHost',
+    };
+
+    const fetchMock = mock(async (input: RequestInfo | URL) => {
+      expect(String(input)).toContain('/api/public/analyze?url=example.com');
+      return new Response(JSON.stringify(payload), { status: 200 });
+    });
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+    global.fetch = fetchMock as typeof fetch;
+
+    await analyzeCommand('example.com', { summary: true, json: true });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(logMock).toHaveBeenCalledWith(
+      'SUMMARY example.com status=online tech=2 seo=92 perf=na hosting=ExampleHost'
+    );
+  });
 });

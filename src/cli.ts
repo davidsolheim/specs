@@ -14,6 +14,7 @@ program
   .argument('<domain>', 'Domain to analyze (e.g., example.com)')
   .option('-v, --verbose', 'Show detailed information')
   .option('-j, --json', 'Output as JSON')
+  .option('--summary', 'Print a single-line CI/log-friendly summary (overrides other output modes)')
   .option('--tech', 'Show only technology stack')
   .option('--seo', 'Show only SEO information')
   .option('--performance', 'Show only performance metrics')

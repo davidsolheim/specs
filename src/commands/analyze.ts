@@ -6,6 +6,7 @@ import { formatOutput } from '../lib/formatter';
 interface AnalyzeOptions {
   verbose?: boolean;
   json?: boolean;
+  summary?: boolean;
   tech?: boolean;
   seo?: boolean;
   performance?: boolean;
@@ -15,9 +16,38 @@ interface AnalyzeOptions {
 export async function analyzeCommand(domain: string, options: AnalyzeOptions) {
   // Normalize domain
   const normalizedDomain = domain.replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/$/, '');
-  
+
+  if (options.summary) {
+    try {
+      const data = await fetchAnalysis(normalizedDomain);
+
+      const status = data.status;
+      const tech = Array.isArray(data.technologies) ? data.technologies.length : 0;
+      const seo = (data as AnalysisResponse).seo?.score ?? 'na';
+      const hosting = (data as AnalysisResponse).host ?? 'na';
+      const perf = 'na';
+
+      console.log(
+        `SUMMARY ${data.domain} status=${status} tech=${tech} seo=${seo} perf=${perf} hosting=${hosting}`
+      );
+      return;
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error(chalk.red(`\n✗ ${error.message}`));
+
+        if (error.message.includes('API error')) {
+          console.log(chalk.gray('\nTip: Check your internet connection or try again later.'));
+        }
+      } else {
+        console.error(chalk.red('\n✗ An unexpected error occurred'));
+      }
+
+      process.exit(1);
+    }
+  }
+
   const spinner = ora(`Analyzing ${chalk.cyan(normalizedDomain)}...`).start();
-  
+
   try {
     // Fetch analysis from API
     const data = await fetchAnalysis(normalizedDomain);
