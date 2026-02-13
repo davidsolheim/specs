@@ -3,6 +3,7 @@
 import { Command } from 'commander';
 import { analyzeCommand } from './commands/analyze';
 import { baselineCommand } from './commands/baseline';
+import { ciCommand } from "./commands/ci";
 
 const program = new Command();
 
@@ -22,6 +23,13 @@ program
   .action((domain: string, options: { out?: string; profile?: string; force?: boolean; stdout?: boolean }) =>
     baselineCommand(domain, options)
   );
+
+program
+  .command("ci")
+  .description("Run CI analysis with baseline diff")
+  .argument("<domain>")
+  .option("--baseline <path>")
+  .action((domain: string, opts: { baseline?: string }) => ciCommand(domain, { baseline: opts.baseline }));
 
 program
   .argument('<domain>', 'Domain to analyze (e.g., example.com)')
