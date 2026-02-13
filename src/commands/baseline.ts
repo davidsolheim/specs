@@ -1,10 +1,10 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, stat, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { fetchAnalysis } from '../lib/api';
 
 export async function baselineCommand(
   domain: string,
-  options: { out?: string; profile?: string }
+  options: { out?: string; profile?: string; force?: boolean }
 ) {
   if (!domain || !options.out || options.out.trim() === '') {
     process.exit(2);
@@ -15,6 +15,18 @@ export async function baselineCommand(
   if (options.profile !== undefined) {
     process.exit(2);
     return;
+  }
+
+  // Refuse to overwrite an existing baseline file unless --force is provided.
+  try {
+    await stat(options.out);
+    if (!options.force) {
+      console.error(`BASELINE_OUT_EXISTS path=${options.out}`);
+      process.exit(2);
+      return;
+    }
+  } catch {
+    // does not exist (or not stat'able) → proceed to write
   }
 
   // Normalize domain exactly like analyze.

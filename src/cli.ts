@@ -16,8 +16,9 @@ program
   .description('Save raw analysis JSON to a baseline file')
   .argument('<domain>', 'Domain to baseline (e.g., example.com)')
   .requiredOption('--out <path>', 'Path to write the baseline JSON file')
+  .option('--force', 'Overwrite an existing baseline file (usage: baseline --out <path> --force)')
   .option('--profile <ci|report>', 'Rejected for baseline (usage error)')
-  .action((domain: string, options: { out?: string; profile?: string }) => baselineCommand(domain, options));
+  .action((domain: string, options: { out?: string; profile?: string; force?: boolean }) => baselineCommand(domain, options));
 
 program
   .argument('<domain>', 'Domain to analyze (e.g., example.com)')
