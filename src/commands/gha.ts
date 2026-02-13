@@ -9,6 +9,8 @@ export async function ghaCommand(
     workflow?: boolean;
     timeoutMinutes?: number | string;
     name?: string;
+    job?: string;
+    jobName?: string;
     runsOn?: string;
     nodeVersion?: string;
     timeoutMinutes?: number | string;
@@ -72,6 +74,36 @@ export async function ghaCommand(
     console.error("WORKFLOW_NAME_INVALID");
     process.exit(2);
     return;
+  }
+
+  if (options.job !== undefined && !options.workflow) {
+    console.error("WORKFLOW_JOB_REQUIRES_WORKFLOW");
+    process.exit(2);
+    return;
+  }
+
+  if (options.job !== undefined && options.workflow) {
+    const job = options.job.trim();
+    if (!/^[a-zA-Z_][a-zA-Z0-9_-]*$/.test(job)) {
+      console.error("WORKFLOW_JOB_INVALID");
+      process.exit(2);
+      return;
+    }
+  }
+
+  if (options.jobName !== undefined && !options.workflow) {
+    console.error("WORKFLOW_JOB_NAME_REQUIRES_WORKFLOW");
+    process.exit(2);
+    return;
+  }
+
+  if (options.jobName !== undefined && options.workflow) {
+    const jobName = options.jobName.trim();
+    if (jobName.length < 1 || jobName.length > 64) {
+      console.error("WORKFLOW_JOB_NAME_INVALID");
+      process.exit(2);
+      return;
+    }
   }
 
   if (options.runsOn !== undefined && !options.workflow) {
@@ -156,6 +188,8 @@ export async function ghaCommand(
   if (options.workflow) {
     const branch = options.branch ?? 'main';
     const runsOn = options.runsOn ?? 'ubuntu-latest';
+    const job = options.job ? options.job.trim() : "sitespecs";
+    const jobName = options.jobName ? options.jobName.trim() : undefined;
 
     let onBlock = "on:\n" + "  workflow_dispatch:\n";
     if (options.pullRequest) onBlock += "  pull_request:\n" + `    branches: [${branch}]\n`;
@@ -171,7 +205,8 @@ export async function ghaCommand(
       `name: ${options.name ?? 'SiteSpecs'}\n` +
       onBlock +
       "jobs:\n" +
-      "  sitespecs:\n" +
+      "  " + job + ":\n" +
+      (jobName !== undefined ? "    name: " + jobName + "\n" : "") +
       "    runs-on: " + runsOn + "\n" +
       (parsedTimeoutMinutes !== undefined
         ? "    timeout-minutes: " + parsedTimeoutMinutes + "\n"

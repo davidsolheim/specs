@@ -38,6 +38,8 @@ program
   .argument('<domain>', 'Domain to analyze in CI (e.g., example.com)')
   .option('--baseline <path>', 'Path to a baseline analysis JSON file')
   .option('--workflow', 'Print a full GitHub Actions workflow YAML')
+  .option('--job <id>', 'Set the workflow job id (requires --workflow)')
+  .option('--job-name <name>', 'Set the workflow job name (requires --workflow)')
   .option('--runs-on <label>', 'Set the workflow job runner (requires --workflow)')
   .option("--timeout-minutes <n>", "Job timeout in minutes")
   .option('--node-version <version>', 'Set the workflow Node.js version (requires --workflow)')
@@ -54,6 +56,8 @@ program
     opts: {
       baseline?: string;
       workflow?: boolean;
+      job?: string;
+      jobName?: string;
       runsOn?: string;
       timeoutMinutes?: string;
       nodeVersion?: string;
@@ -70,6 +74,8 @@ program
     ghaCommand(domain, {
       baseline: opts.baseline,
       workflow: opts.workflow,
+      job: opts.job,
+      jobName: opts.jobName,
       runsOn: opts.runsOn,
       timeoutMinutes: opts.timeoutMinutes,
       nodeVersion: opts.nodeVersion,
