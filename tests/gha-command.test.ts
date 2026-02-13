@@ -143,6 +143,41 @@ describe('gha command', () => {
     expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_PUSH_REQUIRES_WORKFLOW');
   });
 
+  test('manual without workflow: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', manual: true } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_MANUAL_REQUIRES_WORKFLOW');
+  });
+
+  test('workflow + manual: prints workflow.yml fixture', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await ghaCommand('example.com', { baseline: 'baseline.json', workflow: true, manual: true } as any);
+
+    expect(errMock).not.toHaveBeenCalled();
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(await readFixture('workflow.yml'));
+  });
+
   test('workflow + schedule: prints full workflow YAML with schedule block', async () => {
     const logMock = mock(() => {});
     console.log = logMock as typeof console.log;

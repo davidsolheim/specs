@@ -7,6 +7,7 @@ export async function ghaCommand(
   options: {
     baseline?: string;
     workflow?: boolean;
+    manual?: boolean;
     pullRequest?: boolean;
     push?: boolean;
     version?: string;
@@ -35,6 +36,12 @@ export async function ghaCommand(
 
   if (options.write !== undefined && !options.workflow) {
     console.error('WORKFLOW_WRITE_REQUIRES_WORKFLOW');
+    process.exit(2);
+    return;
+  }
+
+  if (options.manual === true && !options.workflow) {
+    console.error('WORKFLOW_MANUAL_REQUIRES_WORKFLOW');
     process.exit(2);
     return;
   }
