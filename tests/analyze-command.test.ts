@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test';
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { analyzeCommand } from '../src/commands/analyze';
@@ -254,5 +254,65 @@ describe('analyze command deterministic fixtures', () => {
     expect(line).toContain('exit=2');
 
     expect(exitMock).toHaveBeenCalledWith(2);
+  });
+
+  test('summary+save: writes file but preserves SUMMARY output', async () => {
+    const payload = {
+      domain: 'example.com',
+      url: 'https://example.com',
+      status: 'online',
+      technologies: [{ name: 'Bun' }, { name: 'TypeScript' }],
+      seo: { score: 92 },
+      host: 'ExampleHost',
+    };
+
+    const dir = await mkdtemp(join(tmpdir(), 'specs-tests-'));
+    const savePath = join(dir, 'saved.json');
+
+    const fetchMock = mock(async () => new Response(JSON.stringify(payload), { status: 200 }));
+    global.fetch = fetchMock as typeof fetch;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await analyzeCommand('example.com', { summary: true, save: savePath });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(logMock).toHaveBeenCalledWith(
+      'SUMMARY example.com status=online tech=2 seo=92 perf=na hosting=ExampleHost'
+    );
+
+    const saved = await readFile(savePath, 'utf8');
+    expect(JSON.parse(saved)).toEqual(payload);
+  });
+
+  test('json+save: writes file but preserves JSON output', async () => {
+    const payload = {
+      domain: 'example.com',
+      url: 'https://example.com',
+      status: 'online',
+      technologies: [],
+    };
+
+    const dir = await mkdtemp(join(tmpdir(), 'specs-tests-'));
+    const savePath = join(dir, 'saved.json');
+
+    const fetchMock = mock(async () => new Response(JSON.stringify(payload), { status: 200 }));
+    global.fetch = fetchMock as typeof fetch;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await analyzeCommand('example.com', { json: true, save: savePath });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(logMock).toHaveBeenCalledWith(JSON.stringify(payload, null, 2));
+
+    const saved = await readFile(savePath, 'utf8');
+    expect(JSON.parse(saved)).toEqual(payload);
   });
 });

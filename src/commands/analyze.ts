@@ -1,6 +1,7 @@
 import ora from 'ora';
 import chalk from 'chalk';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
 import { fetchAnalysis, type AnalysisResponse } from '../lib/api';
 import { computeJsonDriftCounts, computeJsonDriftDetails } from '../lib/json-diff';
 import { formatOutput } from '../lib/formatter';
@@ -16,6 +17,12 @@ interface AnalyzeOptions {
   seo?: boolean;
   performance?: boolean;
   hosting?: boolean;
+  save?: string;
+}
+
+async function saveAnalysisJson(savePath: string, data: unknown) {
+  await mkdir(dirname(savePath), { recursive: true });
+  await writeFile(savePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
 export async function analyzeCommand(domain: string, options: AnalyzeOptions) {
@@ -45,6 +52,15 @@ export async function analyzeCommand(domain: string, options: AnalyzeOptions) {
 
     try {
       const data = await fetchAnalysis(normalizedDomain);
+
+      if (options.save) {
+        try {
+          await saveAnalysisJson(options.save, data);
+        } catch {
+          console.log(`SUMMARY ${normalizedDomain} exit=2`);
+          process.exit(2);
+        }
+      }
 
       const status = data.status;
       const tech = Array.isArray(data.technologies) ? data.technologies.length : 0;
@@ -99,6 +115,17 @@ export async function analyzeCommand(domain: string, options: AnalyzeOptions) {
   try {
     // Fetch analysis from API
     const data = await fetchAnalysis(normalizedDomain);
+
+    if (options.save) {
+      try {
+        await saveAnalysisJson(options.save, data);
+      } catch (error) {
+        spinner.fail(chalk.red('Analysis failed'));
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(chalk.red(`\n✗ Failed to save analysis JSON to ${options.save}: ${message}`));
+        process.exit(1);
+      }
+    }
     
     spinner.succeed(chalk.green(`Analysis complete for ${chalk.bold(data.domain)}`));
     
