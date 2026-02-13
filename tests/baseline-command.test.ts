@@ -67,6 +67,96 @@ describe('baseline command', () => {
     expect(JSON.parse(saved)).toEqual(payload);
   });
 
+  test('--stdout: prints exactly one JSON line and no other logs', async () => {
+    const payload = {
+      domain: 'example.com',
+      url: 'https://example.com',
+      status: 'online',
+      technologies: [],
+    };
+
+    const fetchMock = mock(async (input: RequestInfo | URL) => {
+      // Should normalize like analyze: strip scheme, www, trailing slash.
+      expect(String(input)).toContain('/api/public/analyze?url=Example.com');
+      return new Response(JSON.stringify(payload), { status: 200 });
+    });
+    global.fetch = fetchMock as typeof fetch;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await baselineCommand('https://www.Example.com/', { stdout: true });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(errMock).toHaveBeenCalledTimes(0);
+    expect(exitMock).toHaveBeenCalledTimes(0);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const line = String((logMock as any).mock.calls[0][0]);
+    expect(line).toBe(JSON.stringify(payload));
+    expect(JSON.parse(line)).toEqual(payload);
+  });
+
+  test('--stdout with --out: exits 2 with deterministic conflict stderr and does not fetch', async () => {
+    const fetchMock = mock(async () => new Response('{}', { status: 200 }));
+    global.fetch = fetchMock as typeof fetch;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(baselineCommand('example.com', { out: 'baseline.json', stdout: true })).rejects.toThrow('EXIT_2');
+
+    expect(exitMock).toHaveBeenCalledWith(2);
+    expect(fetchMock).toHaveBeenCalledTimes(0);
+    expect(logMock).toHaveBeenCalledTimes(0);
+
+    expect(errMock).toHaveBeenCalledTimes(1);
+    const errLine = String((errMock as any).mock.calls[0][0]);
+    expect(errLine).toBe('BASELINE_OUTPUT_CONFLICT');
+  });
+
+  test('--stdout with --force: exits 2 with deterministic invalid-force stderr and does not fetch', async () => {
+    const fetchMock = mock(async () => new Response('{}', { status: 200 }));
+    global.fetch = fetchMock as typeof fetch;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(baselineCommand('example.com', { stdout: true, force: true })).rejects.toThrow('EXIT_2');
+
+    expect(exitMock).toHaveBeenCalledWith(2);
+    expect(fetchMock).toHaveBeenCalledTimes(0);
+    expect(logMock).toHaveBeenCalledTimes(0);
+
+    expect(errMock).toHaveBeenCalledTimes(1);
+    const errLine = String((errMock as any).mock.calls[0][0]);
+    expect(errLine).toBe('BASELINE_FORCE_INVALID');
+  });
+
   test('out path exists (no --force): exits 2, prints exists error, and does not fetch', async () => {
     const payload = {
       domain: 'example.com',

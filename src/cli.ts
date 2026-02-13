@@ -15,10 +15,13 @@ program
   .command('baseline')
   .description('Save raw analysis JSON to a baseline file')
   .argument('<domain>', 'Domain to baseline (e.g., example.com)')
-  .requiredOption('--out <path>', 'Path to write the baseline JSON file')
-  .option('--force', 'Overwrite an existing baseline file (usage: baseline --out <path> --force)')
+  .option('--stdout', 'Write raw baseline JSON to stdout')
+  .option('--out <path>', 'Path to write the baseline JSON file')
+  .option('--force', 'Overwrite an existing baseline file (file mode only; usage: baseline --out <path> --force)')
   .option('--profile <ci|report>', 'Rejected for baseline (usage error)')
-  .action((domain: string, options: { out?: string; profile?: string; force?: boolean }) => baselineCommand(domain, options));
+  .action((domain: string, options: { out?: string; profile?: string; force?: boolean; stdout?: boolean }) =>
+    baselineCommand(domain, options)
+  );
 
 program
   .argument('<domain>', 'Domain to analyze (e.g., example.com)')
