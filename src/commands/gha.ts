@@ -4,7 +4,14 @@ import { dirname } from 'node:path';
 
 export async function ghaCommand(
   domain: string,
-  options: { baseline?: string; workflow?: boolean; version?: string; write?: string; force?: boolean },
+  options: {
+    baseline?: string;
+    workflow?: boolean;
+    version?: string;
+    write?: string;
+    force?: boolean;
+    schedule?: string;
+  },
 ): Promise<void> {
   if (!domain) {
     console.error("GHA_DOMAIN_REQUIRED");
@@ -30,14 +37,31 @@ export async function ghaCommand(
     return;
   }
 
+  if (options.schedule !== undefined && !options.workflow) {
+    console.error('WORKFLOW_SCHEDULE_REQUIRES_WORKFLOW');
+    process.exit(2);
+    return;
+  }
+
   const pkg = options.version
     ? `@sitespecs/specs@${options.version}`
     : "@sitespecs/specs@latest";
 
   if (options.workflow) {
+    const onBlock = options.schedule
+      ?
+        "on:\n" +
+        "  push:\n" +
+        "  pull_request:\n" +
+        "  schedule:\n" +
+        "    - cron: '" +
+        options.schedule +
+        "'\n"
+      : "on: [push, pull_request]\n";
+
     const yaml =
       "name: SiteSpecs\n" +
-      "on: [push, pull_request]\n" +
+      onBlock +
       "jobs:\n" +
       "  sitespecs:\n" +
       "    runs-on: ubuntu-latest\n" +

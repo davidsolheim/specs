@@ -38,14 +38,15 @@ program
   .argument('<domain>', 'Domain to analyze in CI (e.g., example.com)')
   .option('--baseline <path>', 'Path to a baseline analysis JSON file')
   .option('--workflow', 'Print a full GitHub Actions workflow YAML')
+  .option('--schedule <cron>', 'Add a schedule trigger to the workflow YAML (requires --workflow)')
   .option('--write <file>', 'Write the workflow YAML to a file (requires --workflow)')
   .option('--force', 'Overwrite existing workflow file when used with --write')
   .option('--version <version>', 'Pin the @sitespecs/specs npx package version (default: latest)')
   .action((
     domain: string,
-    opts: { baseline?: string; workflow?: boolean; version?: string; write?: string; force?: boolean }
+    opts: { baseline?: string; workflow?: boolean; version?: string; write?: string; force?: boolean; schedule?: string }
   ) =>
-    ghaCommand(domain, { baseline: opts.baseline, workflow: opts.workflow, write: opts.write, version: opts.version, force: opts.force }),
+    ghaCommand(domain, { baseline: opts.baseline, workflow: opts.workflow, write: opts.write, version: opts.version, force: opts.force, schedule: opts.schedule }),
   );
 
 program

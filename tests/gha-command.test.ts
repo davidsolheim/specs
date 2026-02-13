@@ -78,6 +78,70 @@ describe('gha command', () => {
     );
   });
 
+  test('--schedule without --workflow: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(ghaCommand('example.com', { baseline: 'baseline.json', schedule: '0 3 * * *' } as any)).rejects.toThrow(
+      'EXIT_2',
+    );
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_SCHEDULE_REQUIRES_WORKFLOW');
+  });
+
+  test('workflow + schedule: prints full workflow YAML with schedule block', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      schedule: '0 3 * * *',
+    } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(
+      "name: SiteSpecs\non:\n  push:\n  pull_request:\n  schedule:\n    - cron: '0 3 * * *'\njobs:\n  sitespecs:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - name: Specs CI\n        run: npx -y @sitespecs/specs@latest ci example.com --baseline baseline.json\n",
+    );
+  });
+
+  test('workflow + schedule + write: writes YAML with schedule block to disk', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'specs-tests-'));
+    const outPath = join(dir, 'workflow.yml');
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      schedule: '0 3 * * *',
+      write: outPath,
+    } as any);
+
+    expect(errMock).toHaveBeenCalledTimes(0);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(`WORKFLOW_SAVED path=${outPath}`);
+
+    const saved = await readFile(outPath, 'utf8');
+    expect(saved).toBe(
+      "name: SiteSpecs\non:\n  push:\n  pull_request:\n  schedule:\n    - cron: '0 3 * * *'\njobs:\n  sitespecs:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - name: Specs CI\n        run: npx -y @sitespecs/specs@latest ci example.com --baseline baseline.json\n",
+    );
+  });
+
   test('write without workflow: exits 2 and prints deterministic stderr', async () => {
     const exitMock = mock((code?: number) => {
       throw new Error(`EXIT_${code ?? 'undefined'}`);
