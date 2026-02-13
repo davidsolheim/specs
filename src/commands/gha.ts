@@ -7,6 +7,7 @@ export async function ghaCommand(
   options: {
     baseline?: string;
     workflow?: boolean;
+    concurrency?: string;
     timeoutMinutes?: number | string;
     name?: string;
     job?: string;
@@ -38,6 +39,18 @@ export async function ghaCommand(
 
   if (options.timeoutMinutes !== undefined && !options.workflow) {
     console.error("WORKFLOW_TIMEOUT_MINUTES_REQUIRES_WORKFLOW");
+    process.exit(2);
+    return;
+  }
+
+  if (options.concurrency !== undefined && !options.workflow) {
+    console.error("WORKFLOW_CONCURRENCY_REQUIRES_WORKFLOW");
+    process.exit(2);
+    return;
+  }
+
+  if (options.concurrency !== undefined && options.workflow && options.concurrency.trim() === "") {
+    console.error("WORKFLOW_CONCURRENCY_INVALID");
     process.exit(2);
     return;
   }
@@ -190,6 +203,7 @@ export async function ghaCommand(
     const runsOn = options.runsOn ?? 'ubuntu-latest';
     const job = options.job ? options.job.trim() : "sitespecs";
     const jobName = options.jobName ? options.jobName.trim() : undefined;
+    const concurrencyGroup = options.concurrency !== undefined ? options.concurrency.trim() : undefined;
 
     let onBlock = "on:\n" + "  workflow_dispatch:\n";
     if (options.pullRequest) onBlock += "  pull_request:\n" + `    branches: [${branch}]\n`;
@@ -201,9 +215,17 @@ export async function ghaCommand(
         "  schedule:\n" + "    - cron: '" + options.schedule + "'\n";
     }
 
+    const concurrencyBlock =
+      concurrencyGroup !== undefined
+        ? "concurrency:\n" +
+          "  group: " + concurrencyGroup + "\n" +
+          "  cancel-in-progress: true\n"
+        : "";
+
     const yaml =
       `name: ${options.name ?? 'SiteSpecs'}\n` +
       onBlock +
+      concurrencyBlock +
       "jobs:\n" +
       "  " + job + ":\n" +
       (jobName !== undefined ? "    name: " + jobName + "\n" : "") +
