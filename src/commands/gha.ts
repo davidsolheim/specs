@@ -8,6 +8,7 @@ export async function ghaCommand(
     baseline?: string;
     workflow?: boolean;
     pullRequest?: boolean;
+    push?: boolean;
     version?: string;
     write?: string;
     force?: boolean;
@@ -44,6 +45,12 @@ export async function ghaCommand(
     return;
   }
 
+  if (options.push !== undefined && !options.workflow) {
+    console.error('WORKFLOW_PUSH_REQUIRES_WORKFLOW');
+    process.exit(2);
+    return;
+  }
+
   if (options.schedule !== undefined && !options.workflow) {
     console.error('WORKFLOW_SCHEDULE_REQUIRES_WORKFLOW');
     process.exit(2);
@@ -57,6 +64,9 @@ export async function ghaCommand(
   if (options.workflow) {
     let onBlock = "on:\n" + "  workflow_dispatch:\n";
     if (options.pullRequest) onBlock += "  pull_request:\n";
+    if (options.push) {
+      onBlock += "  push:\n" + "    branches:\n" + "      - main\n";
+    }
     if (options.schedule) {
       onBlock +=
         "  schedule:\n" + "    - cron: '" + options.schedule + "'\n";

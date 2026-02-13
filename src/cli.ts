@@ -39,6 +39,7 @@ program
   .option('--baseline <path>', 'Path to a baseline analysis JSON file')
   .option('--workflow', 'Print a full GitHub Actions workflow YAML')
   .option('--pull-request', 'Add a pull_request trigger to the workflow YAML (requires --workflow)')
+  .option('--push', 'Add a push trigger to the workflow YAML (requires --workflow)')
   .option('--schedule <cron>', 'Add a schedule trigger to the workflow YAML (requires --workflow)')
   .option('--write <file>', 'Write the workflow YAML to a file (requires --workflow)')
   .option('--force', 'Overwrite existing workflow file when used with --write')
@@ -49,6 +50,7 @@ program
       baseline?: string;
       workflow?: boolean;
       pullRequest?: boolean;
+      push?: boolean;
       version?: string;
       write?: string;
       force?: boolean;
@@ -59,6 +61,7 @@ program
       baseline: opts.baseline,
       workflow: opts.workflow,
       pullRequest: opts.pullRequest,
+      push: opts.push,
       write: opts.write,
       version: opts.version,
       force: opts.force,

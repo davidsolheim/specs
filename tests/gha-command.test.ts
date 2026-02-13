@@ -124,6 +124,25 @@ describe('gha command', () => {
     expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_SCHEDULE_REQUIRES_WORKFLOW');
   });
 
+  test('--push without --workflow: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(ghaCommand('example.com', { baseline: 'baseline.json', push: true } as any)).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_PUSH_REQUIRES_WORKFLOW');
+  });
+
   test('workflow + schedule: prints full workflow YAML with schedule block', async () => {
     const logMock = mock(() => {});
     console.log = logMock as typeof console.log;
@@ -138,6 +157,16 @@ describe('gha command', () => {
     expect(String((logMock as any).mock.calls[0][0])).toBe(
       await readFixture('workflow-schedule.yml'),
     );
+  });
+
+  test('workflow + push: prints full workflow YAML with push trigger', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', { baseline: 'baseline.json', workflow: true, push: true } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(await readFixture('workflow-push.yml'));
   });
 
   test('workflow + schedule + pull-request: prints full workflow YAML with pull_request trigger', async () => {
