@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test';
-import { mkdir, mkdtemp, readFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ghaCommand } from '../src/commands/gha';
@@ -120,6 +120,86 @@ describe('gha command', () => {
     expect(saved).toBe(
       'name: SiteSpecs\non: [push, pull_request]\njobs:\n  sitespecs:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - name: Specs CI\n        run: npx -y @sitespecs/specs@latest ci example.com --baseline baseline.json\n',
     );
+  });
+
+  test('workflow + write existing file (no --force): exits 2 with deterministic stderr and does not overwrite', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'specs-tests-'));
+    const outPath = join(dir, 'workflow.yml');
+
+    await writeFile(outPath, 'OLD', 'utf8');
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', workflow: true, write: outPath } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect((errMock as any).mock.calls.length).toBeGreaterThan(0);
+    const errs = (errMock as any).mock.calls.map((c: any[]) => String(c[0]));
+    for (const e of errs) expect(e).toBe(`WORKFLOW_OUT_EXISTS path=${outPath}`);
+
+    const saved = await readFile(outPath, 'utf8');
+    expect(saved).toBe('OLD');
+  });
+
+  test('workflow + write existing file (--force): overwrites and prints WORKFLOW_SAVED', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'specs-tests-'));
+    const outPath = join(dir, 'workflow.yml');
+
+    await writeFile(outPath, 'OLD', 'utf8');
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      write: outPath,
+      force: true,
+    } as any);
+
+    expect(errMock).toHaveBeenCalledTimes(0);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(`WORKFLOW_SAVED path=${outPath}`);
+
+    const saved = await readFile(outPath, 'utf8');
+    expect(saved).not.toBe('OLD');
+    expect(saved).toContain('name: SiteSpecs');
+    expect(saved).toContain('name: Specs CI');
+  });
+
+  test('workflow + --force without --write: exits 2 with deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', workflow: true, force: true } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_FORCE_INVALID');
   });
 
   test('workflow + write failure: exits 2 with deterministic stderr', async () => {
