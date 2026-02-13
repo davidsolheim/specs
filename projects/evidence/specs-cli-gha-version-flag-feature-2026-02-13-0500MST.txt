@@ -1,0 +1,17 @@
+Evidence — specs gha --version flag (pinned npx version)
+Timestamp: 2026-02-13 05:00 MST
+Repo: teton-web/specs
+Branch: elias
+Commit: d08734d
+
+Feature:
+- specs gha <domain> --baseline <path> --version <version>
+- Pins npx package reference to @sitespecs/specs@<version> for both step snippet and --workflow YAML.
+
+Tests:
+- bun test
+- Result: 63 pass / 0 fail
+
+Notes:
+- Added deterministic fixtures for pinned snippet + pinned workflow output.
+- CLI now wires --version through to ghaCommand.
