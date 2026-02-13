@@ -98,6 +98,22 @@ describe('gha command', () => {
     );
   });
 
+  test('workflow + --node-version 20: prints workflow YAML with setup-node step', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      nodeVersion: '20',
+    } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(
+      await readFixture('workflow-node-version-20.yml'),
+    );
+  });
+
   test('--runs-on without --workflow: exits 2 and prints deterministic stderr', async () => {
     const exitMock = mock((code?: number) => {
       throw new Error(`EXIT_${code ?? 'undefined'}`);
@@ -117,6 +133,48 @@ describe('gha command', () => {
     expect(logMock).toHaveBeenCalledTimes(0);
     expect(errMock).toHaveBeenCalledTimes(1);
     expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_RUNS_ON_REQUIRES_WORKFLOW');
+  });
+
+  test('--node-version without --workflow: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', nodeVersion: '20' } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_NODE_VERSION_REQUIRES_WORKFLOW');
+  });
+
+  test('workflow + --node-version blank: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', workflow: true, nodeVersion: '   ' } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_NODE_VERSION_INVALID');
   });
 
   test('workflow + --runs-on blank: exits 2 and prints deterministic stderr', async () => {

@@ -40,6 +40,8 @@ specs gha example.com --baseline baseline.json
 # 3) or generate a minimal full GitHub Actions workflow YAML
 # (optional) pin trigger branch for --push/--pull-request when generating workflow
 specs gha example.com --baseline baseline.json --workflow --branch main
+# (optional) pin Node.js version for reproducible CI
+specs gha example.com --baseline baseline.json --workflow --node-version 20
 
 # Check specific aspects
 specs example.com --tech

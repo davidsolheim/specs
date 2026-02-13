@@ -9,6 +9,7 @@ export async function ghaCommand(
     workflow?: boolean;
     name?: string;
     runsOn?: string;
+    nodeVersion?: string;
     manual?: boolean;
     pullRequest?: boolean;
     push?: boolean;
@@ -63,6 +64,18 @@ export async function ghaCommand(
 
   if (options.runsOn !== undefined && options.workflow && options.runsOn.trim() === "") {
     console.error("WORKFLOW_RUNS_ON_INVALID");
+    process.exit(2);
+    return;
+  }
+
+  if (options.nodeVersion !== undefined && !options.workflow) {
+    console.error("WORKFLOW_NODE_VERSION_REQUIRES_WORKFLOW");
+    process.exit(2);
+    return;
+  }
+
+  if (options.nodeVersion !== undefined && options.workflow && options.nodeVersion.trim() === "") {
+    console.error("WORKFLOW_NODE_VERSION_INVALID");
     process.exit(2);
     return;
   }
@@ -123,6 +136,11 @@ export async function ghaCommand(
       "    runs-on: " + runsOn + "\n" +
       "    steps:\n" +
       "      - uses: actions/checkout@v4\n" +
+      (options.nodeVersion !== undefined
+        ? "      - uses: actions/setup-node@v4\n" +
+          "        with:\n" +
+          "          node-version: " + options.nodeVersion.trim() + "\n"
+        : "") +
       "      - name: Specs CI\n" +
       "        run: npx -y " +
       pkg +

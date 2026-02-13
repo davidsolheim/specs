@@ -39,6 +39,7 @@ program
   .option('--baseline <path>', 'Path to a baseline analysis JSON file')
   .option('--workflow', 'Print a full GitHub Actions workflow YAML')
   .option('--runs-on <label>', 'Set the workflow job runner (requires --workflow)')
+  .option('--node-version <version>', 'Set the workflow Node.js version (requires --workflow)')
   .option("--manual", "Include workflow_dispatch trigger")
   .option('--pull-request', 'Add a pull_request trigger to the workflow YAML (requires --workflow)')
   .option('--push', 'Add a push trigger to the workflow YAML (requires --workflow)')
@@ -53,6 +54,7 @@ program
       baseline?: string;
       workflow?: boolean;
       runsOn?: string;
+      nodeVersion?: string;
       manual?: boolean;
       pullRequest?: boolean;
       push?: boolean;
@@ -67,6 +69,7 @@ program
       baseline: opts.baseline,
       workflow: opts.workflow,
       runsOn: opts.runsOn,
+      nodeVersion: opts.nodeVersion,
       manual: opts.manual,
       pullRequest: opts.pullRequest,
       push: opts.push,
