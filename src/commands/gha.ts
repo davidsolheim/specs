@@ -7,6 +7,7 @@ export async function ghaCommand(
   options: {
     baseline?: string;
     workflow?: boolean;
+    name?: string;
     manual?: boolean;
     pullRequest?: boolean;
     push?: boolean;
@@ -37,6 +38,18 @@ export async function ghaCommand(
 
   if (options.write !== undefined && !options.workflow) {
     console.error('WORKFLOW_WRITE_REQUIRES_WORKFLOW');
+    process.exit(2);
+    return;
+  }
+
+  if (options.name !== undefined && !options.workflow) {
+    console.error("WORKFLOW_NAME_REQUIRES_WORKFLOW");
+    process.exit(2);
+    return;
+  }
+
+  if (options.name !== undefined && options.workflow && options.name.trim() === "") {
+    console.error("WORKFLOW_NAME_INVALID");
     process.exit(2);
     return;
   }
@@ -89,7 +102,7 @@ export async function ghaCommand(
     }
 
     const yaml =
-      "name: SiteSpecs\n" +
+      `name: ${options.name ?? 'SiteSpecs'}\n` +
       onBlock +
       "jobs:\n" +
       "  sitespecs:\n" +
