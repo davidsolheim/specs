@@ -41,6 +41,7 @@ program
   .option("--manual", "Include workflow_dispatch trigger")
   .option('--pull-request', 'Add a pull_request trigger to the workflow YAML (requires --workflow)')
   .option('--push', 'Add a push trigger to the workflow YAML (requires --workflow)')
+  .option('--branch <name>', 'Set the branch for push/pull_request triggers (requires --workflow)')
   .option('--schedule <cron>', 'Add a schedule trigger to the workflow YAML (requires --workflow)')
   .option('--write <file>', 'Write the workflow YAML to a file (requires --workflow)')
   .option('--force', 'Overwrite existing workflow file when used with --write')
@@ -53,6 +54,7 @@ program
       manual?: boolean;
       pullRequest?: boolean;
       push?: boolean;
+      branch?: string;
       version?: string;
       write?: string;
       force?: boolean;
@@ -65,6 +67,7 @@ program
       manual: opts.manual,
       pullRequest: opts.pullRequest,
       push: opts.push,
+      branch: opts.branch,
       write: opts.write,
       version: opts.version,
       force: opts.force,

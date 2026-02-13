@@ -2,9 +2,7 @@ name: SiteSpecs
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main]
-  schedule:
-    - cron: '0 3 * * *'
+    branches: [release]
 jobs:
   sitespecs:
     runs-on: ubuntu-latest

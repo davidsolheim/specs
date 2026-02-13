@@ -38,7 +38,8 @@ specs gha example.com --baseline baseline.json
 #   run: npx -y @sitespecs/specs@latest ci example.com --baseline baseline.json
 
 # 3) or generate a minimal full GitHub Actions workflow YAML
-specs gha example.com --baseline baseline.json --workflow
+# (optional) pin trigger branch for --push/--pull-request when generating workflow
+specs gha example.com --baseline baseline.json --workflow --branch main
 
 # Check specific aspects
 specs example.com --tech

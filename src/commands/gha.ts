@@ -10,6 +10,7 @@ export async function ghaCommand(
     manual?: boolean;
     pullRequest?: boolean;
     push?: boolean;
+    branch?: string;
     version?: string;
     write?: string;
     force?: boolean;
@@ -64,15 +65,23 @@ export async function ghaCommand(
     return;
   }
 
+  if (options.branch !== undefined && !options.workflow) {
+    console.error('WORKFLOW_BRANCH_REQUIRES_WORKFLOW');
+    process.exit(2);
+    return;
+  }
+
   const pkg = options.version
     ? `@sitespecs/specs@${options.version}`
     : "@sitespecs/specs@latest";
 
   if (options.workflow) {
+    const branch = options.branch ?? 'main';
+
     let onBlock = "on:\n" + "  workflow_dispatch:\n";
-    if (options.pullRequest) onBlock += "  pull_request:\n";
+    if (options.pullRequest) onBlock += "  pull_request:\n" + `    branches: [${branch}]\n`;
     if (options.push) {
-      onBlock += "  push:\n" + "    branches:\n" + "      - main\n";
+      onBlock += "  push:\n" + "    branches:\n" + `      - ${branch}\n`;
     }
     if (options.schedule) {
       onBlock +=

@@ -204,6 +204,46 @@ describe('gha command', () => {
     expect(String((logMock as any).mock.calls[0][0])).toBe(await readFixture('workflow-push.yml'));
   });
 
+  test('workflow + push + branch: prints YAML with push.branches=[release] and workflow_dispatch', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      push: true,
+      branch: 'release',
+    } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(await readFixture('workflow-push-branch-release.yml'));
+  });
+
+  test('workflow + pull-request + branch: prints YAML with pull_request.branches=[release] and workflow_dispatch', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      pullRequest: true,
+      branch: 'release',
+    } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(await readFixture('workflow-pull-request-branch-release.yml'));
+  });
+
+  test('workflow + branch (no push/pull-request): prints normal workflow.yml fixture', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', { baseline: 'baseline.json', workflow: true, branch: 'release' } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(await readFixture('workflow.yml'));
+  });
+
   test('workflow + schedule + pull-request: prints full workflow YAML with pull_request trigger', async () => {
     const logMock = mock(() => {});
     console.log = logMock as typeof console.log;
