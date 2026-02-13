@@ -1,6 +1,6 @@
 export async function ghaCommand(
   domain: string,
-  options: { baseline?: string; workflow?: boolean },
+  options: { baseline?: string; workflow?: boolean; version?: string },
 ): Promise<void> {
   if (!domain) {
     console.error("GHA_DOMAIN_REQUIRED");
@@ -14,6 +14,10 @@ export async function ghaCommand(
     return;
   }
 
+  const pkg = options.version
+    ? `@sitespecs/specs@${options.version}`
+    : "@sitespecs/specs@latest";
+
   if (options.workflow) {
     console.log(
       "name: SiteSpecs\n" +
@@ -24,7 +28,9 @@ export async function ghaCommand(
         "    steps:\n" +
         "      - uses: actions/checkout@v4\n" +
         "      - name: Specs CI\n" +
-        "        run: npx -y @sitespecs/specs@latest ci " +
+        "        run: npx -y " +
+        pkg +
+        " ci " +
         domain +
         " --baseline " +
         options.baseline +
@@ -35,7 +41,9 @@ export async function ghaCommand(
 
   console.log("- name: Specs CI");
   console.log(
-    "  run: npx -y @sitespecs/specs@latest ci " +
+    "  run: npx -y " +
+      pkg +
+      " ci " +
       domain +
       " --baseline " +
       options.baseline,

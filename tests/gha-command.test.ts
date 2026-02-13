@@ -74,4 +74,37 @@ describe('gha command', () => {
       'name: SiteSpecs\non: [push, pull_request]\njobs:\n  sitespecs:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - name: Specs CI\n        run: npx -y @sitespecs/specs@latest ci example.com --baseline baseline.json\n',
     );
   });
+
+  test('pinned version snippet: uses @<version> in npx', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await ghaCommand('example.com', { baseline: 'baseline.json', version: '0.1.0' } as any);
+
+    const lines = (logMock as any).mock.calls.map((c: any[]) => String(c[0]));
+    expect(lines).toContain('  run: npx -y @sitespecs/specs@0.1.0 ci example.com --baseline baseline.json');
+  });
+
+  test('pinned version workflow: uses @<version> in YAML', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      version: '0.1.0',
+    } as any);
+
+    const calls = (logMock as any).mock.calls;
+    const last = String(calls[calls.length - 1][0]);
+    expect(last).toContain('run: npx -y @sitespecs/specs@0.1.0 ci example.com --baseline baseline.json');
+  });
 });
