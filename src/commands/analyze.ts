@@ -1,12 +1,16 @@
 import ora from 'ora';
 import chalk from 'chalk';
+import { readFile } from 'node:fs/promises';
 import { fetchAnalysis, type AnalysisResponse } from '../lib/api';
+import { computeJsonDriftCounts } from '../lib/json-diff';
 import { formatOutput } from '../lib/formatter';
 
 interface AnalyzeOptions {
   verbose?: boolean;
   json?: boolean;
   summary?: boolean;
+  diff?: string;
+  failOnDiff?: boolean;
   tech?: boolean;
   seo?: boolean;
   performance?: boolean;
@@ -18,6 +22,18 @@ export async function analyzeCommand(domain: string, options: AnalyzeOptions) {
   const normalizedDomain = domain.replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/$/, '');
 
   if (options.summary) {
+    let baselineJson: unknown | undefined;
+
+    if (options.diff) {
+      try {
+        const raw = await readFile(options.diff, 'utf8');
+        baselineJson = JSON.parse(raw);
+      } catch {
+        console.log(`SUMMARY ${normalizedDomain} exit=2`);
+        process.exit(2);
+      }
+    }
+
     try {
       const data = await fetchAnalysis(normalizedDomain);
 
@@ -26,6 +42,19 @@ export async function analyzeCommand(domain: string, options: AnalyzeOptions) {
       const seo = (data as AnalysisResponse).seo?.score ?? 'na';
       const hosting = (data as AnalysisResponse).host ?? 'na';
       const perf = 'na';
+
+      if (options.diff) {
+        const { changed, added, removed } = computeJsonDriftCounts(baselineJson, data);
+        const drift = changed + added + removed;
+        const exit = options.failOnDiff && drift > 0 ? 1 : 0;
+
+        console.log(
+          `SUMMARY ${data.domain} status=${status} tech=${tech} seo=${seo} perf=${perf} hosting=${hosting} drift_changed=${changed} drift_added=${added} drift_removed=${removed} exit=${exit}`
+        );
+
+        if (exit !== 0) process.exit(exit);
+        return;
+      }
 
       console.log(
         `SUMMARY ${data.domain} status=${status} tech=${tech} seo=${seo} perf=${perf} hosting=${hosting}`

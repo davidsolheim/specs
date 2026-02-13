@@ -15,6 +15,8 @@ program
   .option('-v, --verbose', 'Show detailed information')
   .option('-j, --json', 'Output as JSON')
   .option('--summary', 'Print a single-line CI/log-friendly summary (overrides other output modes)')
+  .option('--diff <path>', 'Compare against a baseline analysis JSON file (summary mode only)')
+  .option('--fail-on-diff', 'Exit 1 when drift is detected (requires --summary --diff)')
   .option('--tech', 'Show only technology stack')
   .option('--seo', 'Show only SEO information')
   .option('--performance', 'Show only performance metrics')
