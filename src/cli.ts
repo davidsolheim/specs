@@ -37,7 +37,10 @@ program
   .description('Print a copy/paste GitHub Actions step snippet for specs ci')
   .argument('<domain>', 'Domain to analyze in CI (e.g., example.com)')
   .option('--baseline <path>', 'Path to a baseline analysis JSON file')
-  .action((domain: string, opts: { baseline?: string }) => ghaCommand(domain, { baseline: opts.baseline }));
+  .option('--workflow', 'Print a full GitHub Actions workflow YAML')
+  .action((domain: string, opts: { baseline?: string; workflow?: boolean }) =>
+    ghaCommand(domain, { baseline: opts.baseline, workflow: opts.workflow }),
+  );
 
 program
   .argument('<domain>', 'Domain to analyze (e.g., example.com)')

@@ -37,6 +37,9 @@ specs gha example.com --baseline baseline.json
 # - name: Specs CI
 #   run: npx -y @sitespecs/specs@latest ci example.com --baseline baseline.json
 
+# 3) or generate a minimal full GitHub Actions workflow YAML
+specs gha example.com --baseline baseline.json --workflow
+
 # Check specific aspects
 specs example.com --tech
 specs example.com --seo

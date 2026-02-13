@@ -62,4 +62,16 @@ describe('gha command', () => {
       '  run: npx -y @sitespecs/specs@latest ci example.com --baseline baseline.json',
     );
   });
+
+  test('workflow: prints full workflow YAML with trailing newline', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', { baseline: 'baseline.json', workflow: true } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(
+      'name: SiteSpecs\non: [push, pull_request]\njobs:\n  sitespecs:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - name: Specs CI\n        run: npx -y @sitespecs/specs@latest ci example.com --baseline baseline.json\n',
+    );
+  });
 });
