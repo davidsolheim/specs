@@ -7,6 +7,7 @@ export async function ghaCommand(
   options: {
     baseline?: string;
     workflow?: boolean;
+    artifact?: string;
     concurrency?: string;
     permissions?: string;
     timeoutMinutes?: number | string;
@@ -36,6 +37,23 @@ export async function ghaCommand(
 
   if (!options.baseline) {
     console.error("GHA_BASELINE_REQUIRED");
+    process.exit(2);
+    return;
+  }
+
+  if (options.artifact !== undefined && !options.workflow) {
+    console.error('WORKFLOW_ARTIFACT_REQUIRES_WORKFLOW');
+    process.exit(2);
+    return;
+  }
+
+  const artifactPath =
+    options.workflow && options.artifact !== undefined
+      ? options.artifact.trim()
+      : undefined;
+
+  if (options.workflow && options.artifact !== undefined && artifactPath === '') {
+    console.error('WORKFLOW_ARTIFACT_INVALID');
     process.exit(2);
     return;
   }
@@ -312,10 +330,22 @@ export async function ghaCommand(
       domain +
       " --baseline " +
       options.baseline +
+      (artifactPath !== undefined ? " --save " + artifactPath : "") +
       "\n" +
       (workingDirectory !== undefined
         ? "        working-directory: " + workingDirectory + "\n"
         : "");
+
+    if (artifactPath !== undefined) {
+      yaml +=
+        "      - name: Upload Specs artifact\n" +
+        "        uses: actions/upload-artifact@v4\n" +
+        "        with:\n" +
+        "          name: specs-artifact\n" +
+        "          path: " +
+        artifactPath +
+        "\n";
+    }
 
     if (permissionsBlock !== "" || parsedFetchDepth !== undefined) {
       // Match fixture formatting: some workflow variants end with an extra trailing blank line.

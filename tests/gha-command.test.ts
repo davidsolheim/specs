@@ -82,6 +82,22 @@ describe('gha command', () => {
     );
   });
 
+  test('workflow + --artifact specs-analysis.json: emits fixture', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      artifact: 'specs-analysis.json',
+    } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(
+      await readFixture('workflow-artifact.yml'),
+    );
+  });
+
   test('workflow + --concurrency: emits fixture', async () => {
     const logMock = mock(() => {});
     console.log = logMock as typeof console.log;
@@ -151,6 +167,22 @@ describe('gha command', () => {
     expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_FETCH_DEPTH_REQUIRES_WORKFLOW');
   });
 
+  test('--artifact without --workflow: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', artifact: 'specs-analysis.json' } as any),
+    ).rejects.toThrow('EXIT_2');
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_ARTIFACT_REQUIRES_WORKFLOW');
+  });
+
   test('workflow + invalid --fetch-depth: exits 2 and prints deterministic stderr', async () => {
     const exitMock = mock((code?: number) => {
       throw new Error(`EXIT_${code ?? 'undefined'}`);
@@ -175,6 +207,22 @@ describe('gha command', () => {
     expect(errMock).toHaveBeenCalledTimes(2);
     expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_FETCH_DEPTH_INVALID');
     expect(String((errMock as any).mock.calls[1][0])).toBe('WORKFLOW_FETCH_DEPTH_INVALID');
+  });
+
+  test('--artifact invalid: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', workflow: true, artifact: '' } as any),
+    ).rejects.toThrow('EXIT_2');
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_ARTIFACT_INVALID');
   });
 
   test('workflow + --fetch-depth 0: emits fixture', async () => {

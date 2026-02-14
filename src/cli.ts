@@ -48,6 +48,7 @@ program
   .argument('<domain>', 'Domain to analyze in CI (e.g., example.com)')
   .option('--baseline <path>', 'Path to a baseline analysis JSON file')
   .option('--workflow', 'Print a full GitHub Actions workflow YAML')
+  .option('--artifact <path>', 'Upload analysis JSON as a workflow artifact (requires --workflow)')
   .option('--concurrency <group>', 'Set the workflow concurrency group (requires --workflow)')
   .option('--permissions <mode>', 'Set workflow permissions mode (requires --workflow)')
   .option('--job <id>', 'Set the workflow job id (requires --workflow)')
@@ -70,6 +71,7 @@ program
     opts: {
       baseline?: string;
       workflow?: boolean;
+      artifact?: string;
       concurrency?: string;
       permissions?: string;
       job?: string;
@@ -92,6 +94,7 @@ program
     ghaCommand(domain, {
       baseline: opts.baseline,
       workflow: opts.workflow,
+      artifact: opts.artifact,
       concurrency: opts.concurrency,
       permissions: opts.permissions,
       job: opts.job,
