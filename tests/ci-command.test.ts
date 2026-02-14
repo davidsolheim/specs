@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test';
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ciCommand } from '../src/commands/ci';
@@ -104,6 +104,100 @@ describe('ci command deterministic fixtures', () => {
     expect(out.ok).toBe(false);
     expect(out.domain).toBe('example.com');
     expect(out.exit).toBe(1);
+  });
+
+  test('happy path saves file (stdout unchanged)', async () => {
+    const analysis = { tech: { a: 1 } };
+
+    const dir = await mkdtemp(join(tmpdir(), 'specs-tests-'));
+    const baselinePath = join(dir, 'baseline.json');
+    const outPath = join(dir, 'out.json');
+    await writeFile(baselinePath, JSON.stringify(analysis), 'utf8');
+
+    global.fetch = mock(async () => new Response(JSON.stringify(analysis), { status: 200 })) as typeof fetch;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await ciCommand('example.com', { baseline: baselinePath });
+    const lineWithoutSave = String((logMock as any).mock.calls[0][0]);
+
+    const logMock2 = mock(() => {});
+    console.log = logMock2 as typeof console.log;
+
+    await ciCommand('example.com', { baseline: baselinePath, save: outPath, saveFlagPresent: true });
+    const lineWithSave = String((logMock2 as any).mock.calls[0][0]);
+
+    expect(lineWithSave).toBe(lineWithoutSave);
+
+    const saved = await readFile(outPath, 'utf8');
+    expect(() => JSON.parse(saved)).not.toThrow();
+
+    expect(exitMock).toHaveBeenCalledTimes(0);
+  });
+
+  test('--save present but missing arg exits 2 and prints CI_SAVE_INVALID', async () => {
+    const analysis = { tech: { a: 1 } };
+
+    const dir = await mkdtemp(join(tmpdir(), 'specs-tests-'));
+    const baselinePath = join(dir, 'baseline.json');
+    await writeFile(baselinePath, JSON.stringify(analysis), 'utf8');
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+    console.log = mock(() => {}) as typeof console.log;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await expect(
+      ciCommand('example.com', { baseline: baselinePath, save: '', saveFlagPresent: true })
+    ).rejects.toThrow('EXIT_2');
+
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('CI_SAVE_INVALID');
+  });
+
+  test('write failure exits 2 and prints CI_SAVE_FAILED (stdout still printed)', async () => {
+    const analysis = { tech: { a: 1 } };
+
+    const dir = await mkdtemp(join(tmpdir(), 'specs-tests-'));
+    const baselinePath = join(dir, 'baseline.json');
+    await writeFile(baselinePath, JSON.stringify(analysis), 'utf8');
+
+    global.fetch = mock(async () => new Response(JSON.stringify(analysis), { status: 200 })) as typeof fetch;
+
+    const logMock = mock(() => {});
+    const errMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = errMock as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    // Writing to an existing directory should deterministically fail (EISDIR).
+    await expect(
+      ciCommand('example.com', { baseline: baselinePath, save: dir, saveFlagPresent: true })
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const line = String((logMock as any).mock.calls[0][0]);
+    expect(line.includes('\n')).toBe(false);
+    expect(JSON.parse(line).domain).toBe('example.com');
+
+    expect(errMock).toHaveBeenCalledTimes(1);
+    const errLine = String((errMock as any).mock.calls[0][0]);
+    expect(errLine.startsWith(`CI_SAVE_FAILED path=${dir} error=`)).toBe(true);
   });
 });
 

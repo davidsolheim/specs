@@ -30,7 +30,17 @@ program
   .description("Run CI analysis with baseline diff")
   .argument("<domain>")
   .option("--baseline <path>")
-  .action((domain: string, opts: { baseline?: string }) => ciCommand(domain, { baseline: opts.baseline }));
+  .option("--save [path]", "Save the raw analysis JSON to a file")
+  .action((
+    domain: string,
+    opts: { baseline?: string; save?: string | boolean }
+  ) =>
+    ciCommand(domain, {
+      baseline: opts.baseline,
+      save: typeof opts.save === 'string' ? opts.save : undefined,
+      saveFlagPresent: opts.save !== undefined,
+    }),
+  );
 
 program
   .command('gha')
