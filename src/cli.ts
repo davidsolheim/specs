@@ -43,6 +43,7 @@ program
   .option('--job <id>', 'Set the workflow job id (requires --workflow)')
   .option('--job-name <name>', 'Set the workflow job name (requires --workflow)')
   .option('--runs-on <label>', 'Set the workflow job runner (requires --workflow)')
+  .option('--working-directory <dir>', 'Set working-directory on the Specs CI step (requires --workflow)')
   .option("--timeout-minutes <n>", "Job timeout in minutes")
   .option('--node-version <version>', 'Set the workflow Node.js version (requires --workflow)')
   .option("--manual", "Include workflow_dispatch trigger")
@@ -63,6 +64,7 @@ program
       job?: string;
       jobName?: string;
       runsOn?: string;
+      workingDirectory?: string;
       timeoutMinutes?: string;
       nodeVersion?: string;
       manual?: boolean;
@@ -83,6 +85,7 @@ program
       job: opts.job,
       jobName: opts.jobName,
       runsOn: opts.runsOn,
+      workingDirectory: opts.workingDirectory,
       timeoutMinutes: opts.timeoutMinutes,
       nodeVersion: opts.nodeVersion,
       manual: opts.manual,

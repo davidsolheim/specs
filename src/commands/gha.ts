@@ -14,6 +14,7 @@ export async function ghaCommand(
     job?: string;
     jobName?: string;
     runsOn?: string;
+    workingDirectory?: string;
     nodeVersion?: string;
     timeoutMinutes?: number | string;
     manual?: boolean;
@@ -147,6 +148,21 @@ export async function ghaCommand(
     return;
   }
 
+  if (options.workingDirectory !== undefined && !options.workflow) {
+    console.error('WORKFLOW_WORKING_DIRECTORY_REQUIRES_WORKFLOW');
+    process.exit(2);
+    return;
+  }
+
+  if (options.workingDirectory !== undefined && options.workflow) {
+    const wd = options.workingDirectory.trim();
+    if (wd.length < 1 || wd.length > 200 || wd.includes('\n')) {
+      console.error('WORKFLOW_WORKING_DIRECTORY_INVALID');
+      process.exit(2);
+      return;
+    }
+  }
+
   if (options.nodeVersion !== undefined && !options.workflow) {
     console.error("WORKFLOW_NODE_VERSION_REQUIRES_WORKFLOW");
     process.exit(2);
@@ -217,6 +233,7 @@ export async function ghaCommand(
   if (options.workflow) {
     const branch = options.branch ?? 'main';
     const runsOn = options.runsOn ?? 'ubuntu-latest';
+    const workingDirectory = options.workingDirectory ? options.workingDirectory.trim() : undefined;
     const job = options.job ? options.job.trim() : "sitespecs";
     const jobName = options.jobName ? options.jobName.trim() : undefined;
     const concurrencyGroup = options.concurrency !== undefined ? options.concurrency.trim() : undefined;
@@ -270,7 +287,10 @@ export async function ghaCommand(
       domain +
       " --baseline " +
       options.baseline +
-      "\n";
+      "\n" +
+      (workingDirectory !== undefined
+        ? "        working-directory: " + workingDirectory + "\n"
+        : "");
 
     if (permissionsBlock !== "") {
       // Match fixture formatting: permissions-mode workflows end with an extra blank line.

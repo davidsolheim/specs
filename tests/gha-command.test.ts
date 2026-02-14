@@ -130,6 +130,43 @@ describe('gha command', () => {
     );
   });
 
+  test('--working-directory without --workflow: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', workingDirectory: 'specs' } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_WORKING_DIRECTORY_REQUIRES_WORKFLOW');
+  });
+
+  test('workflow + --working-directory specs: emits fixture', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      workingDirectory: 'specs',
+    } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(
+      await readFixture('workflow-working-directory-specs.yml'),
+    );
+  });
+
   test('--permissions without --workflow: exits 2 and prints deterministic stderr', async () => {
     const exitMock = mock((code?: number) => {
       throw new Error(`EXIT_${code ?? 'undefined'}`);
