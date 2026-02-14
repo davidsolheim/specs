@@ -130,6 +130,85 @@ describe('gha command', () => {
     );
   });
 
+  test('--fetch-depth without --workflow: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', fetchDepth: 2 } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_FETCH_DEPTH_REQUIRES_WORKFLOW');
+  });
+
+  test('workflow + invalid --fetch-depth: exits 2 and prints deterministic stderr', async () => {
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', workflow: true, fetchDepth: -1 } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    await expect(
+      ghaCommand('example.com', { baseline: 'baseline.json', workflow: true, fetchDepth: 'nope' } as any),
+    ).rejects.toThrow('EXIT_2');
+
+    expect(logMock).toHaveBeenCalledTimes(0);
+    expect(errMock).toHaveBeenCalledTimes(2);
+    expect(String((errMock as any).mock.calls[0][0])).toBe('WORKFLOW_FETCH_DEPTH_INVALID');
+    expect(String((errMock as any).mock.calls[1][0])).toBe('WORKFLOW_FETCH_DEPTH_INVALID');
+  });
+
+  test('workflow + --fetch-depth 0: emits fixture', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      fetchDepth: 0,
+    } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(
+      await readFixture('workflow-fetch-depth-0.yml'),
+    );
+  });
+
+  test('workflow + --fetch-depth 2: emits fixture', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await ghaCommand('example.com', {
+      baseline: 'baseline.json',
+      workflow: true,
+      fetchDepth: 2,
+    } as any);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    expect(String((logMock as any).mock.calls[0][0])).toBe(
+      await readFixture('workflow-fetch-depth-2.yml'),
+    );
+  });
+
   test('--working-directory without --workflow: exits 2 and prints deterministic stderr', async () => {
     const exitMock = mock((code?: number) => {
       throw new Error(`EXIT_${code ?? 'undefined'}`);

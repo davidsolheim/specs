@@ -44,6 +44,7 @@ program
   .option('--job-name <name>', 'Set the workflow job name (requires --workflow)')
   .option('--runs-on <label>', 'Set the workflow job runner (requires --workflow)')
   .option('--working-directory <dir>', 'Set working-directory on the Specs CI step (requires --workflow)')
+  .option('--fetch-depth <n>', 'Set actions/checkout fetch-depth (requires --workflow)')
   .option("--timeout-minutes <n>", "Job timeout in minutes")
   .option('--node-version <version>', 'Set the workflow Node.js version (requires --workflow)')
   .option("--manual", "Include workflow_dispatch trigger")
@@ -65,6 +66,7 @@ program
       jobName?: string;
       runsOn?: string;
       workingDirectory?: string;
+      fetchDepth?: string;
       timeoutMinutes?: string;
       nodeVersion?: string;
       manual?: boolean;
@@ -86,6 +88,7 @@ program
       jobName: opts.jobName,
       runsOn: opts.runsOn,
       workingDirectory: opts.workingDirectory,
+      fetchDepth: opts.fetchDepth,
       timeoutMinutes: opts.timeoutMinutes,
       nodeVersion: opts.nodeVersion,
       manual: opts.manual,

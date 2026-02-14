@@ -10,6 +10,7 @@ export async function ghaCommand(
     concurrency?: string;
     permissions?: string;
     timeoutMinutes?: number | string;
+    fetchDepth?: number | string;
     name?: string;
     job?: string;
     jobName?: string;
@@ -37,6 +38,24 @@ export async function ghaCommand(
     console.error("GHA_BASELINE_REQUIRED");
     process.exit(2);
     return;
+  }
+
+  if (options.fetchDepth !== undefined && !options.workflow) {
+    console.error("WORKFLOW_FETCH_DEPTH_REQUIRES_WORKFLOW");
+    process.exit(2);
+    return;
+  }
+
+  let parsedFetchDepth: number | undefined;
+  if (options.workflow && options.fetchDepth !== undefined) {
+    const raw = String(options.fetchDepth).trim();
+    const n = raw === "" ? Number.NaN : Number(raw);
+    if (!Number.isInteger(n) || n < 0) {
+      console.error("WORKFLOW_FETCH_DEPTH_INVALID");
+      process.exit(2);
+      return;
+    }
+    parsedFetchDepth = n;
   }
 
   if (options.timeoutMinutes !== undefined && !options.workflow) {
@@ -239,6 +258,11 @@ export async function ghaCommand(
     const concurrencyGroup = options.concurrency !== undefined ? options.concurrency.trim() : undefined;
     const permissionsMode = options.permissions !== undefined ? options.permissions.trim() : undefined;
 
+    const checkoutWithBlock =
+      parsedFetchDepth !== undefined
+        ? "        with:\n" + "          fetch-depth: " + parsedFetchDepth + "\n"
+        : "";
+
     let onBlock = "on:\n" + "  workflow_dispatch:\n";
     if (options.pullRequest) onBlock += "  pull_request:\n" + `    branches: [${branch}]\n`;
     if (options.push) {
@@ -275,6 +299,7 @@ export async function ghaCommand(
         : "") +
       "    steps:\n" +
       "      - uses: actions/checkout@v4\n" +
+      checkoutWithBlock +
       (options.nodeVersion !== undefined
         ? "      - uses: actions/setup-node@v4\n" +
           "        with:\n" +
@@ -292,8 +317,8 @@ export async function ghaCommand(
         ? "        working-directory: " + workingDirectory + "\n"
         : "");
 
-    if (permissionsBlock !== "") {
-      // Match fixture formatting: permissions-mode workflows end with an extra blank line.
+    if (permissionsBlock !== "" || parsedFetchDepth !== undefined) {
+      // Match fixture formatting: some workflow variants end with an extra trailing blank line.
       yaml += "\n";
     }
 
