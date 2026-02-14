@@ -8,6 +8,7 @@ export async function ghaCommand(
     baseline?: string;
     workflow?: boolean;
     concurrency?: string;
+    permissions?: string;
     timeoutMinutes?: number | string;
     name?: string;
     job?: string;
@@ -53,6 +54,21 @@ export async function ghaCommand(
     console.error("WORKFLOW_CONCURRENCY_INVALID");
     process.exit(2);
     return;
+  }
+
+  if (options.permissions !== undefined && !options.workflow) {
+    console.error("WORKFLOW_PERMISSIONS_REQUIRES_WORKFLOW");
+    process.exit(2);
+    return;
+  }
+
+  if (options.permissions !== undefined && options.workflow) {
+    const mode = options.permissions.trim();
+    if (mode !== "minimal") {
+      console.error("WORKFLOW_PERMISSIONS_INVALID");
+      process.exit(2);
+      return;
+    }
   }
 
   let timeout: number | undefined;
@@ -204,6 +220,7 @@ export async function ghaCommand(
     const job = options.job ? options.job.trim() : "sitespecs";
     const jobName = options.jobName ? options.jobName.trim() : undefined;
     const concurrencyGroup = options.concurrency !== undefined ? options.concurrency.trim() : undefined;
+    const permissionsMode = options.permissions !== undefined ? options.permissions.trim() : undefined;
 
     let onBlock = "on:\n" + "  workflow_dispatch:\n";
     if (options.pullRequest) onBlock += "  pull_request:\n" + `    branches: [${branch}]\n`;
@@ -222,10 +239,16 @@ export async function ghaCommand(
           "  cancel-in-progress: true\n"
         : "";
 
-    const yaml =
+    const permissionsBlock =
+      permissionsMode === "minimal"
+        ? "permissions:\n" + "  contents: read\n"
+        : "";
+
+    let yaml =
       `name: ${options.name ?? 'SiteSpecs'}\n` +
       onBlock +
       concurrencyBlock +
+      permissionsBlock +
       "jobs:\n" +
       "  " + job + ":\n" +
       (jobName !== undefined ? "    name: " + jobName + "\n" : "") +
@@ -248,6 +271,11 @@ export async function ghaCommand(
       " --baseline " +
       options.baseline +
       "\n";
+
+    if (permissionsBlock !== "") {
+      // Match fixture formatting: permissions-mode workflows end with an extra blank line.
+      yaml += "\n";
+    }
 
     if (options.write !== undefined) {
       try {
