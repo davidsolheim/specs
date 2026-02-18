@@ -209,6 +209,14 @@ describe('fetchAnalysis deterministic behavior fixtures', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  test('failure: retries once then returns API status error on repeated transient 500', async () => {
+    const fetchMock = mock(async () => new Response('server error', { status: 500, statusText: 'Internal Server Error' }));
+    global.fetch = fetchMock as typeof fetch;
+
+    await expect(fetchAnalysis('example.com')).rejects.toThrow('API error: 500 Internal Server Error');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   test('failure: maps network errors to deterministic message', async () => {
     global.fetch = mock(async () => {
       throw new TypeError('fetch failed');
