@@ -2,6 +2,18 @@ import { mkdir, stat, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { fetchAnalysis } from '../lib/api';
 
+function classifyFetchError(error: unknown): 'rate_limited' | 'upstream_unavailable' | 'api_error' {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.startsWith('Rate limited:')) return 'rate_limited';
+  if (/^API error: (502|503|504)\b/.test(message)) return 'upstream_unavailable';
+  return 'api_error';
+}
+
+function exitFetchFailure(error: unknown) {
+  console.error(`BASELINE_FETCH_FAILED error=${classifyFetchError(error)}`);
+  process.exit(1);
+}
+
 export async function baselineCommand(
   domain: string,
   options: { out?: string; profile?: string; force?: boolean; stdout?: boolean }
@@ -37,8 +49,8 @@ export async function baselineCommand(
     let data: unknown;
     try {
       data = await fetchAnalysis(normalizedDomain);
-    } catch {
-      process.exit(1);
+    } catch (error) {
+      exitFetchFailure(error);
       return;
     }
 
@@ -67,8 +79,8 @@ export async function baselineCommand(
   let data: unknown;
   try {
     data = await fetchAnalysis(normalizedDomain);
-  } catch {
-    process.exit(1);
+  } catch (error) {
+    exitFetchFailure(error);
     return;
   }
 
