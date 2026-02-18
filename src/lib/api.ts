@@ -32,11 +32,21 @@ export interface AnalysisResponse {
   analyzing?: boolean;
 }
 
+function normalizeInputUrl(domainOrUrl: string): string {
+  const trimmed = domainOrUrl.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  return `https://${trimmed}`;
+}
+
 /**
  * Fetch website analysis from sitespecs.com API
  */
 export async function fetchAnalysis(domain: string): Promise<AnalysisResponse> {
-  const url = `${API_BASE_URL}/api/public/analyze?url=${encodeURIComponent(domain)}`;
+  const normalizedUrl = normalizeInputUrl(domain);
+  const url = `${API_BASE_URL}/api/public/analyze?url=${encodeURIComponent(normalizedUrl)}`;
 
   let response: Response;
   try {

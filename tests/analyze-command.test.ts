@@ -27,7 +27,7 @@ describe('analyze command deterministic fixtures', () => {
     };
 
     const fetchMock = mock(async (input: RequestInfo | URL) => {
-      expect(String(input)).toContain('/api/public/analyze?url=Example.com');
+      expect(String(input)).toContain('/api/public/analyze?url=https%3A%2F%2FExample.com');
       return new Response(JSON.stringify(payload), { status: 200 });
     });
 
@@ -68,7 +68,7 @@ describe('analyze command deterministic fixtures', () => {
     };
 
     const fetchMock = mock(async (input: RequestInfo | URL) => {
-      expect(String(input)).toContain('/api/public/analyze?url=example.com');
+      expect(String(input)).toContain('/api/public/analyze?url=https%3A%2F%2Fexample.com');
       return new Response(JSON.stringify(payload), { status: 200 });
     });
 

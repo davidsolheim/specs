@@ -18,7 +18,7 @@ describe('fetchAnalysis deterministic behavior fixtures', () => {
     };
 
     const fetchMock = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
-      expect(String(input)).toContain('/api/public/analyze?url=example.com');
+      expect(String(input)).toContain('/api/public/analyze?url=https%3A%2F%2Fexample.com');
       expect(init?.headers).toEqual({ 'User-Agent': 'specs-cli/0.1.0' });
       return new Response(JSON.stringify(payload), { status: 200 });
     });
@@ -28,6 +28,25 @@ describe('fetchAnalysis deterministic behavior fixtures', () => {
     const result = await fetchAnalysis('example.com');
     expect(result).toEqual(payload);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  test('smoke: preserves full https URL input', async () => {
+    const payload = {
+      domain: 'example.com',
+      url: 'https://example.com',
+      status: 'online',
+      technologies: [],
+    };
+
+    const fetchMock = mock(async (input: RequestInfo | URL) => {
+      expect(String(input)).toContain('/api/public/analyze?url=https%3A%2F%2Fexample.com');
+      return new Response(JSON.stringify(payload), { status: 200 });
+    });
+
+    global.fetch = fetchMock as typeof fetch;
+
+    const result = await fetchAnalysis('https://example.com');
+    expect(result).toEqual(payload);
   });
 
   test('failure: returns domain-not-found error on 404', async () => {
