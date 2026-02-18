@@ -7,7 +7,7 @@ function classifyFetchError(error: unknown): 'rate_limited' | 'upstream_unavaila
   if (message.startsWith('Rate limited:')) return 'rate_limited';
 
   if (
-    /^API error: (500|502|503|504)\b/.test(message) ||
+    /^API error: (408|500|502|503|504)\b/.test(message) ||
     message.startsWith('DNS temporarily unavailable:') ||
     message.startsWith('DNS error:') ||
     message.startsWith('Connection reset:') ||
