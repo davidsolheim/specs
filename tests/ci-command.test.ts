@@ -34,6 +34,34 @@ describe('ci command deterministic fixtures', () => {
     expect(String((errMock as any).mock.calls[0][0])).toContain('CI_BASELINE_REQUIRED');
   });
 
+  test('rate-limited API failure exits 1 with rate_limited marker', async () => {
+    const analysis = { tech: { a: 1 } };
+
+    const dir = await mkdtemp(join(tmpdir(), 'specs-tests-'));
+    const baselinePath = join(dir, 'baseline.json');
+    await writeFile(baselinePath, JSON.stringify(analysis), 'utf8');
+
+    global.fetch = mock(async () => new Response('rate limited', { status: 429, statusText: 'Too Many Requests' })) as typeof fetch;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await expect(ciCommand('example.com', { baseline: baselinePath })).rejects.toThrow('EXIT_1');
+    expect(exitMock).toHaveBeenCalledWith(1);
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out.ok).toBe(false);
+    expect(out.error).toBe('rate_limited');
+    expect(out.exit).toBe(1);
+  });
+
   test('happy path: baseline equals fetched analysis -> ok=true exit=0 and single JSON stdout line', async () => {
     const analysis = { tech: { a: 1 } };
 
