@@ -151,14 +151,42 @@ describe('fetchAnalysis deterministic behavior fixtures', () => {
     await expect(fetchAnalysis('missing-host.invalid')).rejects.toThrow('DNS error: unable to resolve SiteSpecs API host');
   });
 
-  test('failure: maps connection reset ECONNRESET errors to deterministic message', async () => {
-    global.fetch = mock(async () => {
+  test('reliability: retries once and succeeds when first attempt hits ECONNRESET', async () => {
+    const payload = {
+      domain: 'flaky.example.com',
+      url: 'https://flaky.example.com',
+      status: 'online',
+      technologies: [],
+    };
+
+    const fetchMock = mock(async () => {
+      if (fetchMock.mock.calls.length === 1) {
+        const resetError = new TypeError('fetch failed');
+        (resetError as TypeError & { cause?: { code?: string } }).cause = { code: 'ECONNRESET' };
+        throw resetError;
+      }
+
+      return new Response(JSON.stringify(payload), { status: 200 });
+    });
+
+    global.fetch = fetchMock as typeof fetch;
+
+    const result = await fetchAnalysis('flaky.example.com');
+    expect(result).toEqual(payload);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  test('failure: retries once then maps repeated ECONNRESET to deterministic message', async () => {
+    const fetchMock = mock(async () => {
       const resetError = new TypeError('fetch failed');
       (resetError as TypeError & { cause?: { code?: string } }).cause = { code: 'ECONNRESET' };
       throw resetError;
-    }) as typeof fetch;
+    });
+
+    global.fetch = fetchMock as typeof fetch;
 
     await expect(fetchAnalysis('flaky.example.com')).rejects.toThrow('Connection reset: SiteSpecs API connection was interrupted');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   test('failure: maps unreachable route EHOSTUNREACH errors to deterministic message', async () => {

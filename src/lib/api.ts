@@ -51,6 +51,7 @@ export async function fetchAnalysis(domain: string): Promise<AnalysisResponse> {
   let response: Response | undefined;
   const maxAttempts = 2;
   const retryableStatuses = new Set([429, 502, 503, 504]);
+  const retryableNetworkCodes = new Set(['ECONNRESET']);
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -66,11 +67,17 @@ export async function fetchAnalysis(domain: string): Promise<AnalysisResponse> {
 
       if (error instanceof TypeError) {
         const typeErrorWithCause = error as TypeError & { cause?: { code?: string } };
-        if (typeErrorWithCause.cause?.code === 'ENOTFOUND') {
+        const networkCode = typeErrorWithCause.cause?.code;
+
+        if (networkCode && retryableNetworkCodes.has(networkCode) && attempt < maxAttempts) {
+          continue;
+        }
+
+        if (networkCode === 'ENOTFOUND') {
           throw new Error('DNS error: unable to resolve SiteSpecs API host');
         }
 
-        if (typeErrorWithCause.cause?.code === 'ECONNRESET') {
+        if (networkCode === 'ECONNRESET') {
           throw new Error('Connection reset: SiteSpecs API connection was interrupted');
         }
 
