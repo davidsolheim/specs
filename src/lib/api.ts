@@ -83,7 +83,7 @@ export async function fetchAnalysis(domain: string): Promise<AnalysisResponse> {
   let response: Response | undefined;
   const maxAttempts = 2;
   const retryableStatuses = new Set([429, 502, 503, 504]);
-  const retryableNetworkCodes = new Set(['ECONNRESET', 'ETIMEDOUT', 'EAI_AGAIN', 'ENETUNREACH']);
+  const retryableNetworkCodes = new Set(['ECONNRESET', 'ETIMEDOUT', 'EAI_AGAIN', 'ENETUNREACH', 'EHOSTUNREACH']);
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
