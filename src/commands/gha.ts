@@ -8,6 +8,7 @@ export async function ghaCommand(
     baseline?: string;
     workflow?: boolean;
     artifact?: string;
+    artifactRetentionDays?: number | string;
     concurrency?: string;
     permissions?: string;
     timeoutMinutes?: number | string;
@@ -56,6 +57,30 @@ export async function ghaCommand(
     console.error('WORKFLOW_ARTIFACT_INVALID');
     process.exit(2);
     return;
+  }
+
+  if (options.artifactRetentionDays !== undefined && !options.workflow) {
+    console.error('WORKFLOW_ARTIFACT_RETENTION_DAYS_REQUIRES_WORKFLOW');
+    process.exit(2);
+    return;
+  }
+
+  if (options.artifactRetentionDays !== undefined && options.artifact === undefined) {
+    console.error('WORKFLOW_ARTIFACT_RETENTION_DAYS_REQUIRES_ARTIFACT');
+    process.exit(2);
+    return;
+  }
+
+  let parsedArtifactRetentionDays: number | undefined;
+  if (options.workflow && options.artifactRetentionDays !== undefined) {
+    const raw = String(options.artifactRetentionDays).trim();
+    const n = raw === '' ? Number.NaN : Number(raw);
+    if (!Number.isInteger(n) || n < 1 || n > 90) {
+      console.error('WORKFLOW_ARTIFACT_RETENTION_DAYS_INVALID');
+      process.exit(2);
+      return;
+    }
+    parsedArtifactRetentionDays = n;
   }
 
   if (options.fetchDepth !== undefined && !options.workflow) {
@@ -344,7 +369,10 @@ export async function ghaCommand(
         "          name: specs-artifact\n" +
         "          path: " +
         artifactPath +
-        "\n";
+        "\n" +
+        (parsedArtifactRetentionDays !== undefined
+          ? "          retention-days: " + parsedArtifactRetentionDays + "\n"
+          : "");
     }
 
     if (permissionsBlock !== "" || parsedFetchDepth !== undefined) {

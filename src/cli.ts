@@ -49,6 +49,7 @@ program
   .option('--baseline <path>', 'Path to a baseline analysis JSON file')
   .option('--workflow', 'Print a full GitHub Actions workflow YAML')
   .option('--artifact <path>', 'Upload analysis JSON as a workflow artifact (requires --workflow)')
+  .option('--artifact-retention-days <n>', 'Set upload-artifact retention-days (requires --workflow and --artifact)')
   .option('--concurrency <group>', 'Set the workflow concurrency group (requires --workflow)')
   .option('--permissions <mode>', 'Set workflow permissions mode (requires --workflow)')
   .option('--job <id>', 'Set the workflow job id (requires --workflow)')
@@ -72,6 +73,7 @@ program
       baseline?: string;
       workflow?: boolean;
       artifact?: string;
+      artifactRetentionDays?: string;
       concurrency?: string;
       permissions?: string;
       job?: string;
@@ -95,6 +97,7 @@ program
       baseline: opts.baseline,
       workflow: opts.workflow,
       artifact: opts.artifact,
+      artifactRetentionDays: opts.artifactRetentionDays,
       concurrency: opts.concurrency,
       permissions: opts.permissions,
       job: opts.job,
