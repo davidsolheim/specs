@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test';
-import { fetchAnalysis } from '../src/lib/api';
+import { fetchAnalysis, parseRetryAfterMs } from '../src/lib/api';
 
 describe('fetchAnalysis deterministic behavior fixtures', () => {
   const originalFetch = global.fetch;
@@ -7,6 +7,19 @@ describe('fetchAnalysis deterministic behavior fixtures', () => {
   afterEach(() => {
     global.fetch = originalFetch;
     mock.restore();
+  });
+
+  test('contract: parseRetryAfterMs handles delta-seconds header', () => {
+    expect(parseRetryAfterMs('2')).toBe(2000);
+  });
+
+  test('contract: parseRetryAfterMs caps long waits to 10 seconds', () => {
+    expect(parseRetryAfterMs('120')).toBe(10_000);
+  });
+
+  test('contract: parseRetryAfterMs ignores invalid values', () => {
+    expect(parseRetryAfterMs(null)).toBe(0);
+    expect(parseRetryAfterMs('not-a-date')).toBe(0);
   });
 
   test('smoke: builds analyze URL, sets User-Agent, and returns API payload', async () => {
@@ -79,7 +92,11 @@ describe('fetchAnalysis deterministic behavior fixtures', () => {
 
     const fetchMock = mock(async () => {
       if (fetchMock.mock.calls.length === 1) {
-        return new Response('rate limited', { status: 429, statusText: 'Too Many Requests' });
+        return new Response('rate limited', {
+          status: 429,
+          statusText: 'Too Many Requests',
+          headers: { 'retry-after': '0' },
+        });
       }
 
       return new Response(JSON.stringify(payload), { status: 200 });
@@ -90,6 +107,47 @@ describe('fetchAnalysis deterministic behavior fixtures', () => {
     const result = await fetchAnalysis('example.com');
     expect(result).toEqual(payload);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  test('reliability: honors retry-after delay before retrying 429', async () => {
+    const payload = {
+      domain: 'example.com',
+      url: 'https://example.com',
+      status: 'online',
+      technologies: [],
+    };
+
+    const originalSetTimeout = globalThis.setTimeout;
+    const setTimeoutMock = mock((handler: (...args: any[]) => void, _timeout?: number) => {
+      handler();
+      return 1 as unknown as Timer;
+    });
+
+    try {
+      (globalThis as typeof globalThis & { setTimeout: typeof setTimeout }).setTimeout = setTimeoutMock as typeof setTimeout;
+
+      const fetchMock = mock(async () => {
+        if (fetchMock.mock.calls.length === 1) {
+          return new Response('rate limited', {
+            status: 429,
+            statusText: 'Too Many Requests',
+            headers: { 'retry-after': '1' },
+          });
+        }
+
+        return new Response(JSON.stringify(payload), { status: 200 });
+      });
+
+      global.fetch = fetchMock as typeof fetch;
+
+      const result = await fetchAnalysis('example.com');
+      expect(result).toEqual(payload);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(setTimeoutMock).toHaveBeenCalledTimes(1);
+      expect(Number((setTimeoutMock as any).mock.calls[0][1])).toBe(1000);
+    } finally {
+      (globalThis as typeof globalThis & { setTimeout: typeof setTimeout }).setTimeout = originalSetTimeout;
+    }
   });
 
   test('reliability: succeeds on second attempt when first attempt is transient 503', async () => {

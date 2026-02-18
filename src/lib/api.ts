@@ -41,6 +41,38 @@ function normalizeInputUrl(domainOrUrl: string): string {
   return `https://${trimmed}`;
 }
 
+export function parseRetryAfterMs(retryAfterHeader: string | null): number {
+  if (!retryAfterHeader) {
+    return 0;
+  }
+
+  const seconds = Number(retryAfterHeader);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.min(Math.floor(seconds * 1000), 10_000);
+  }
+
+  const retryAt = Date.parse(retryAfterHeader);
+  if (!Number.isNaN(retryAt)) {
+    const deltaMs = retryAt - Date.now();
+    if (deltaMs > 0) {
+      return Math.min(deltaMs, 10_000);
+    }
+  }
+
+  return 0;
+}
+
+async function waitForRetryAfter(response: Response): Promise<void> {
+  const waitMs = parseRetryAfterMs(response.headers.get('retry-after'));
+  if (waitMs <= 0) {
+    return;
+  }
+
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, waitMs);
+  });
+}
+
 /**
  * Fetch website analysis from sitespecs.com API
  */
@@ -158,6 +190,8 @@ export async function fetchAnalysis(domain: string): Promise<AnalysisResponse> {
     if (!retryableStatuses.has(response.status) || attempt === maxAttempts) {
       break;
     }
+
+    await waitForRetryAfter(response);
   }
 
   if (!response) {
