@@ -427,14 +427,42 @@ describe('fetchAnalysis deterministic behavior fixtures', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  test('failure: maps refused connection ECONNREFUSED errors to deterministic message', async () => {
-    global.fetch = mock(async () => {
+  test('reliability: retries once and succeeds when first attempt hits ECONNREFUSED', async () => {
+    const payload = {
+      domain: 'closed-port.example',
+      url: 'https://closed-port.example',
+      status: 'online',
+      technologies: [],
+    };
+
+    const fetchMock = mock(async () => {
+      if (fetchMock.mock.calls.length === 1) {
+        const refusedError = new TypeError('fetch failed');
+        (refusedError as TypeError & { cause?: { code?: string } }).cause = { code: 'ECONNREFUSED' };
+        throw refusedError;
+      }
+
+      return new Response(JSON.stringify(payload), { status: 200 });
+    });
+
+    global.fetch = fetchMock as typeof fetch;
+
+    const result = await fetchAnalysis('closed-port.example');
+    expect(result).toEqual(payload);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  test('failure: retries once then maps repeated ECONNREFUSED to deterministic message', async () => {
+    const fetchMock = mock(async () => {
       const refusedError = new TypeError('fetch failed');
       (refusedError as TypeError & { cause?: { code?: string } }).cause = { code: 'ECONNREFUSED' };
       throw refusedError;
-    }) as typeof fetch;
+    });
+
+    global.fetch = fetchMock as typeof fetch;
 
     await expect(fetchAnalysis('closed-port.example')).rejects.toThrow('Connection refused: SiteSpecs API is not accepting connections');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   test('failure: maps expired certificate CERT_HAS_EXPIRED errors to deterministic message', async () => {
