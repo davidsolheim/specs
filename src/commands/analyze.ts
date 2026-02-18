@@ -157,7 +157,8 @@ export async function analyzeCommand(domain: string, options: AnalyzeOptions) {
     try {
       data = await fetchAnalysis(normalizedDomain);
     } catch (error) {
-      exitWith(baseOut({ ok: false, exit: 1, error: 'api_error' }));
+      const isRateLimited = error instanceof Error && error.message.startsWith('Rate limited:');
+      exitWith(baseOut({ ok: false, exit: 1, error: isRateLimited ? 'rate_limited' : 'api_error' }));
       return;
     }
 

@@ -48,98 +48,115 @@ export async function fetchAnalysis(domain: string): Promise<AnalysisResponse> {
   const normalizedUrl = normalizeInputUrl(domain);
   const url = `${API_BASE_URL}/api/public/analyze?url=${encodeURIComponent(normalizedUrl)}`;
 
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      headers: {
-        'User-Agent': 'specs-cli/0.1.0',
-      },
-    });
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Request timed out: SiteSpecs API did not respond in time');
+  let response: Response | undefined;
+  const maxAttempts = 2;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      response = await fetch(url, {
+        headers: {
+          'User-Agent': 'specs-cli/0.1.0',
+        },
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request timed out: SiteSpecs API did not respond in time');
+      }
+
+      if (error instanceof TypeError) {
+        const typeErrorWithCause = error as TypeError & { cause?: { code?: string } };
+        if (typeErrorWithCause.cause?.code === 'ENOTFOUND') {
+          throw new Error('DNS error: unable to resolve SiteSpecs API host');
+        }
+
+        if (typeErrorWithCause.cause?.code === 'ECONNRESET') {
+          throw new Error('Connection reset: SiteSpecs API connection was interrupted');
+        }
+
+        if (typeErrorWithCause.cause?.code === 'EHOSTUNREACH') {
+          throw new Error('Route unreachable: unable to reach SiteSpecs API network');
+        }
+
+        if (typeErrorWithCause.cause?.code === 'ECONNREFUSED') {
+          throw new Error('Connection refused: SiteSpecs API is not accepting connections');
+        }
+
+        if (typeErrorWithCause.cause?.code === 'CERT_HAS_EXPIRED') {
+          throw new Error('TLS certificate expired: SiteSpecs API certificate is no longer valid');
+        }
+
+        if (typeErrorWithCause.cause?.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE') {
+          throw new Error('TLS verification failed: unable to verify SiteSpecs API certificate chain');
+        }
+
+        if (typeErrorWithCause.cause?.code === 'DEPTH_ZERO_SELF_SIGNED_CERT') {
+          throw new Error('TLS trust failure: SiteSpecs API returned a self-signed certificate');
+        }
+
+        if (typeErrorWithCause.cause?.code === 'ERR_TLS_CERT_ALTNAME_INVALID') {
+          throw new Error('TLS hostname mismatch: SiteSpecs API certificate does not match the requested host');
+        }
+
+        if (typeErrorWithCause.cause?.code === 'CERT_REVOKED') {
+          throw new Error('TLS certificate revoked: SiteSpecs API certificate has been revoked by its issuer');
+        }
+
+        if (typeErrorWithCause.cause?.code === 'CERT_SIGNATURE_FAILURE') {
+          throw new Error('TLS certificate signature failure: SiteSpecs API certificate signature validation failed');
+        }
+
+        if (typeErrorWithCause.cause?.code === 'ERR_SSL_WRONG_VERSION_NUMBER') {
+          throw new Error('TLS protocol mismatch: SiteSpecs API rejected the negotiated TLS version');
+        }
+
+        if (typeErrorWithCause.cause?.code === 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY') {
+          throw new Error('TLS issuer validation failed: unable to retrieve SiteSpecs API issuer certificate locally');
+        }
+
+        if (typeErrorWithCause.cause?.code === 'UNABLE_TO_GET_ISSUER_CERT') {
+          throw new Error('TLS issuer certificate missing: unable to retrieve SiteSpecs API issuer certificate');
+        }
+
+        if (typeErrorWithCause.cause?.code === 'UNABLE_TO_DECRYPT_CERT_SIGNATURE') {
+          throw new Error('TLS certificate signature decode failure: unable to decrypt SiteSpecs API certificate signature');
+        }
+
+        if (typeErrorWithCause.cause?.code === 'CERT_CHAIN_TOO_LONG') {
+          throw new Error('TLS certificate chain too long: SiteSpecs API certificate chain exceeds validation depth');
+        }
+
+        if (typeErrorWithCause.cause?.code === 'SELF_SIGNED_CERT_IN_CHAIN') {
+          throw new Error('TLS trust chain failure: SiteSpecs API certificate chain includes a self-signed certificate');
+        }
+
+        if (typeErrorWithCause.cause?.code === 'CERT_NOT_YET_VALID') {
+          throw new Error('TLS certificate not yet valid: SiteSpecs API certificate validity window has not started');
+        }
+
+        throw new Error('Network error: unable to reach SiteSpecs API');
+      }
+
+      throw error;
     }
 
-    if (error instanceof TypeError) {
-      const typeErrorWithCause = error as TypeError & { cause?: { code?: string } };
-      if (typeErrorWithCause.cause?.code === 'ENOTFOUND') {
-        throw new Error('DNS error: unable to resolve SiteSpecs API host');
-      }
-
-      if (typeErrorWithCause.cause?.code === 'ECONNRESET') {
-        throw new Error('Connection reset: SiteSpecs API connection was interrupted');
-      }
-
-      if (typeErrorWithCause.cause?.code === 'EHOSTUNREACH') {
-        throw new Error('Route unreachable: unable to reach SiteSpecs API network');
-      }
-
-      if (typeErrorWithCause.cause?.code === 'ECONNREFUSED') {
-        throw new Error('Connection refused: SiteSpecs API is not accepting connections');
-      }
-
-      if (typeErrorWithCause.cause?.code === 'CERT_HAS_EXPIRED') {
-        throw new Error('TLS certificate expired: SiteSpecs API certificate is no longer valid');
-      }
-
-      if (typeErrorWithCause.cause?.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE') {
-        throw new Error('TLS verification failed: unable to verify SiteSpecs API certificate chain');
-      }
-
-      if (typeErrorWithCause.cause?.code === 'DEPTH_ZERO_SELF_SIGNED_CERT') {
-        throw new Error('TLS trust failure: SiteSpecs API returned a self-signed certificate');
-      }
-
-      if (typeErrorWithCause.cause?.code === 'ERR_TLS_CERT_ALTNAME_INVALID') {
-        throw new Error('TLS hostname mismatch: SiteSpecs API certificate does not match the requested host');
-      }
-
-      if (typeErrorWithCause.cause?.code === 'CERT_REVOKED') {
-        throw new Error('TLS certificate revoked: SiteSpecs API certificate has been revoked by its issuer');
-      }
-
-      if (typeErrorWithCause.cause?.code === 'CERT_SIGNATURE_FAILURE') {
-        throw new Error('TLS certificate signature failure: SiteSpecs API certificate signature validation failed');
-      }
-
-      if (typeErrorWithCause.cause?.code === 'ERR_SSL_WRONG_VERSION_NUMBER') {
-        throw new Error('TLS protocol mismatch: SiteSpecs API rejected the negotiated TLS version');
-      }
-
-      if (typeErrorWithCause.cause?.code === 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY') {
-        throw new Error('TLS issuer validation failed: unable to retrieve SiteSpecs API issuer certificate locally');
-      }
-
-      if (typeErrorWithCause.cause?.code === 'UNABLE_TO_GET_ISSUER_CERT') {
-        throw new Error('TLS issuer certificate missing: unable to retrieve SiteSpecs API issuer certificate');
-      }
-
-      if (typeErrorWithCause.cause?.code === 'UNABLE_TO_DECRYPT_CERT_SIGNATURE') {
-        throw new Error('TLS certificate signature decode failure: unable to decrypt SiteSpecs API certificate signature');
-      }
-
-      if (typeErrorWithCause.cause?.code === 'CERT_CHAIN_TOO_LONG') {
-        throw new Error('TLS certificate chain too long: SiteSpecs API certificate chain exceeds validation depth');
-      }
-
-      if (typeErrorWithCause.cause?.code === 'SELF_SIGNED_CERT_IN_CHAIN') {
-        throw new Error('TLS trust chain failure: SiteSpecs API certificate chain includes a self-signed certificate');
-      }
-
-      if (typeErrorWithCause.cause?.code === 'CERT_NOT_YET_VALID') {
-        throw new Error('TLS certificate not yet valid: SiteSpecs API certificate validity window has not started');
-      }
-
-      throw new Error('Network error: unable to reach SiteSpecs API');
+    if (response.status !== 429 || attempt === maxAttempts) {
+      break;
     }
+  }
 
-    throw error;
+  if (!response) {
+    throw new Error('Network error: unable to reach SiteSpecs API');
   }
 
   if (!response.ok) {
     if (response.status === 404) {
       throw new Error(`Domain not found: ${domain}`);
     }
+
+    if (response.status === 429) {
+      throw new Error('Rate limited: SiteSpecs API throttled this request (HTTP 429)');
+    }
+
     throw new Error(`API error: ${response.status} ${response.statusText}`);
   }
 
