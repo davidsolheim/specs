@@ -18,6 +18,26 @@ type CiSummaryJsonOutput = {
   error: string | null;
 };
 
+function classifyFetchFailure(message: string): 'rate_limited' | 'upstream_unavailable' | 'api_error' {
+  if (message.startsWith('Rate limited:')) return 'rate_limited';
+
+  if (
+    /^API error: (502|503|504)\b/.test(message) ||
+    message.startsWith('DNS temporarily unavailable:') ||
+    message.startsWith('DNS error:') ||
+    message.startsWith('Connection reset:') ||
+    message.startsWith('Connection timed out:') ||
+    message.startsWith('Request timed out:') ||
+    message.startsWith('Route unreachable:') ||
+    message.startsWith('Connection refused:') ||
+    message === 'Network error: unable to reach SiteSpecs API'
+  ) {
+    return 'upstream_unavailable';
+  }
+
+  return 'api_error';
+}
+
 function extractErrorMessage(err: unknown): string {
   if (typeof err === 'object' && err !== null) {
     const anyErr = err as any;
@@ -60,8 +80,6 @@ export async function ciCommand(domain: string, options: CiOptions) {
     data = await fetchAnalysis(domain);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const isRateLimited = message.startsWith('Rate limited:');
-    const isUpstreamUnavailable = /^API error: (502|503|504)\b/.test(message);
     emit({
       ok: false,
       domain,
@@ -69,7 +87,7 @@ export async function ciCommand(domain: string, options: CiOptions) {
       drift_added: 0,
       drift_removed: 0,
       exit: 1,
-      error: isRateLimited ? 'rate_limited' : isUpstreamUnavailable ? 'upstream_unavailable' : 'api_error',
+      error: classifyFetchFailure(message),
     });
     process.exit(1);
     return;

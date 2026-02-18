@@ -271,6 +271,31 @@ describe('baseline command', () => {
     expect(String((errMock as any).mock.calls[0][0])).toBe('BASELINE_FETCH_FAILED error=rate_limited');
   });
 
+  test('api failure: repeated EAI_AGAIN exits 1 with upstream_unavailable marker', async () => {
+    global.fetch = mock(async () => {
+      throw Object.assign(new TypeError('fetch failed'), { cause: { code: 'EAI_AGAIN' } });
+    }) as typeof fetch;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    console.log = mock(() => {}) as typeof console.log;
+    const errMock = mock(() => {});
+    console.error = errMock as typeof console.error;
+
+    const dir = await mkdtemp(join(tmpdir(), 'specs-tests-'));
+    const outPath = join(dir, 'baseline.json');
+
+    await expect(baselineCommand('example.com', { out: outPath })).rejects.toThrow('EXIT_1');
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errMock).toHaveBeenCalledTimes(1);
+    expect(String((errMock as any).mock.calls[0][0])).toBe(
+      'BASELINE_FETCH_FAILED error=upstream_unavailable'
+    );
+  });
+
   test('profile provided: exits 2', async () => {
     const fetchMock = mock(async () => new Response('{}', { status: 200 }));
     global.fetch = fetchMock as typeof fetch;

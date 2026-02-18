@@ -40,6 +40,26 @@ type SummaryJsonOutput = {
   error: string | null;
 };
 
+function classifyFetchFailure(message: string): 'rate_limited' | 'upstream_unavailable' | 'api_error' {
+  if (message.startsWith('Rate limited:')) return 'rate_limited';
+
+  if (
+    /^API error: (502|503|504)\b/.test(message) ||
+    message.startsWith('DNS temporarily unavailable:') ||
+    message.startsWith('DNS error:') ||
+    message.startsWith('Connection reset:') ||
+    message.startsWith('Connection timed out:') ||
+    message.startsWith('Request timed out:') ||
+    message.startsWith('Route unreachable:') ||
+    message.startsWith('Connection refused:') ||
+    message === 'Network error: unable to reach SiteSpecs API'
+  ) {
+    return 'upstream_unavailable';
+  }
+
+  return 'api_error';
+}
+
 export async function analyzeCommand(domain: string, options: AnalyzeOptions) {
   const effectiveOptions: AnalyzeOptions = { ...options };
 
@@ -158,13 +178,11 @@ export async function analyzeCommand(domain: string, options: AnalyzeOptions) {
       data = await fetchAnalysis(normalizedDomain);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const isRateLimited = message.startsWith('Rate limited:');
-      const isUpstreamUnavailable = /^API error: (502|503|504)\b/.test(message);
       exitWith(
         baseOut({
           ok: false,
           exit: 1,
-          error: isRateLimited ? 'rate_limited' : isUpstreamUnavailable ? 'upstream_unavailable' : 'api_error',
+          error: classifyFetchFailure(message),
         })
       );
       return;

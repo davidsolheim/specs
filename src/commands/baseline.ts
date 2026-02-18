@@ -5,7 +5,21 @@ import { fetchAnalysis } from '../lib/api';
 function classifyFetchError(error: unknown): 'rate_limited' | 'upstream_unavailable' | 'api_error' {
   const message = error instanceof Error ? error.message : String(error);
   if (message.startsWith('Rate limited:')) return 'rate_limited';
-  if (/^API error: (502|503|504)\b/.test(message)) return 'upstream_unavailable';
+
+  if (
+    /^API error: (502|503|504)\b/.test(message) ||
+    message.startsWith('DNS temporarily unavailable:') ||
+    message.startsWith('DNS error:') ||
+    message.startsWith('Connection reset:') ||
+    message.startsWith('Connection timed out:') ||
+    message.startsWith('Request timed out:') ||
+    message.startsWith('Route unreachable:') ||
+    message.startsWith('Connection refused:') ||
+    message === 'Network error: unable to reach SiteSpecs API'
+  ) {
+    return 'upstream_unavailable';
+  }
+
   return 'api_error';
 }
 
