@@ -22,6 +22,34 @@ describe('fetchAnalysis deterministic behavior fixtures', () => {
     expect(parseRetryAfterMs('not-a-date')).toBe(0);
   });
 
+  test('contract: parseRetryAfterMs supports HTTP-date values', () => {
+    const now = Date.now();
+    const originalNow = Date.now;
+
+    try {
+      Date.now = () => now;
+      const retryAt = new Date(now + 5_000).toUTCString();
+      const waitMs = parseRetryAfterMs(retryAt);
+      expect(waitMs).toBeGreaterThanOrEqual(4_000);
+      expect(waitMs).toBeLessThanOrEqual(5_000);
+    } finally {
+      Date.now = originalNow;
+    }
+  });
+
+  test('contract: parseRetryAfterMs ignores past HTTP-date values', () => {
+    const now = Date.now();
+    const originalNow = Date.now;
+
+    try {
+      Date.now = () => now;
+      const retryAt = new Date(now - 5_000).toUTCString();
+      expect(parseRetryAfterMs(retryAt)).toBe(0);
+    } finally {
+      Date.now = originalNow;
+    }
+  });
+
   test('smoke: builds analyze URL, sets User-Agent, and returns API payload', async () => {
     const payload = {
       domain: 'example.com',
