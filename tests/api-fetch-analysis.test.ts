@@ -217,6 +217,14 @@ describe('fetchAnalysis deterministic behavior fixtures', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  test('failure: retries once then returns API status error on repeated transient 408', async () => {
+    const fetchMock = mock(async () => new Response('timeout', { status: 408, statusText: 'Request Timeout' }));
+    global.fetch = fetchMock as typeof fetch;
+
+    await expect(fetchAnalysis('example.com')).rejects.toThrow('API error: 408 Request Timeout');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   test('failure: maps network errors to deterministic message', async () => {
     global.fetch = mock(async () => {
       throw new TypeError('fetch failed');
