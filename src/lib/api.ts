@@ -51,7 +51,7 @@ export async function fetchAnalysis(domain: string): Promise<AnalysisResponse> {
   let response: Response | undefined;
   const maxAttempts = 2;
   const retryableStatuses = new Set([429, 502, 503, 504]);
-  const retryableNetworkCodes = new Set(['ECONNRESET']);
+  const retryableNetworkCodes = new Set(['ECONNRESET', 'ETIMEDOUT']);
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -79,6 +79,10 @@ export async function fetchAnalysis(domain: string): Promise<AnalysisResponse> {
 
         if (networkCode === 'ECONNRESET') {
           throw new Error('Connection reset: SiteSpecs API connection was interrupted');
+        }
+
+        if (networkCode === 'ETIMEDOUT') {
+          throw new Error('Connection timed out: SiteSpecs API connection attempt exceeded the timeout window');
         }
 
         if (typeErrorWithCause.cause?.code === 'EHOSTUNREACH') {

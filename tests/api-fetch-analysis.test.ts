@@ -189,6 +189,44 @@ describe('fetchAnalysis deterministic behavior fixtures', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  test('reliability: retries once and succeeds when first attempt hits ETIMEDOUT', async () => {
+    const payload = {
+      domain: 'slow.example.com',
+      url: 'https://slow.example.com',
+      status: 'online',
+      technologies: [],
+    };
+
+    const fetchMock = mock(async () => {
+      if (fetchMock.mock.calls.length === 1) {
+        const timeoutError = new TypeError('fetch failed');
+        (timeoutError as TypeError & { cause?: { code?: string } }).cause = { code: 'ETIMEDOUT' };
+        throw timeoutError;
+      }
+
+      return new Response(JSON.stringify(payload), { status: 200 });
+    });
+
+    global.fetch = fetchMock as typeof fetch;
+
+    const result = await fetchAnalysis('slow.example.com');
+    expect(result).toEqual(payload);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  test('failure: retries once then maps repeated ETIMEDOUT to deterministic message', async () => {
+    const fetchMock = mock(async () => {
+      const timeoutError = new TypeError('fetch failed');
+      (timeoutError as TypeError & { cause?: { code?: string } }).cause = { code: 'ETIMEDOUT' };
+      throw timeoutError;
+    });
+
+    global.fetch = fetchMock as typeof fetch;
+
+    await expect(fetchAnalysis('slow.example.com')).rejects.toThrow('Connection timed out: SiteSpecs API connection attempt exceeded the timeout window');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   test('failure: maps unreachable route EHOSTUNREACH errors to deterministic message', async () => {
     global.fetch = mock(async () => {
       const unreachableError = new TypeError('fetch failed');
