@@ -157,8 +157,16 @@ export async function analyzeCommand(domain: string, options: AnalyzeOptions) {
     try {
       data = await fetchAnalysis(normalizedDomain);
     } catch (error) {
-      const isRateLimited = error instanceof Error && error.message.startsWith('Rate limited:');
-      exitWith(baseOut({ ok: false, exit: 1, error: isRateLimited ? 'rate_limited' : 'api_error' }));
+      const message = error instanceof Error ? error.message : String(error);
+      const isRateLimited = message.startsWith('Rate limited:');
+      const isUpstreamUnavailable = /^API error: (502|503|504)\b/.test(message);
+      exitWith(
+        baseOut({
+          ok: false,
+          exit: 1,
+          error: isRateLimited ? 'rate_limited' : isUpstreamUnavailable ? 'upstream_unavailable' : 'api_error',
+        })
+      );
       return;
     }
 

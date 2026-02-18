@@ -59,7 +59,9 @@ export async function ciCommand(domain: string, options: CiOptions) {
   try {
     data = await fetchAnalysis(domain);
   } catch (err) {
-    const isRateLimited = err instanceof Error && err.message.startsWith('Rate limited:');
+    const message = err instanceof Error ? err.message : String(err);
+    const isRateLimited = message.startsWith('Rate limited:');
+    const isUpstreamUnavailable = /^API error: (502|503|504)\b/.test(message);
     emit({
       ok: false,
       domain,
@@ -67,7 +69,7 @@ export async function ciCommand(domain: string, options: CiOptions) {
       drift_added: 0,
       drift_removed: 0,
       exit: 1,
-      error: isRateLimited ? 'rate_limited' : 'api_error',
+      error: isRateLimited ? 'rate_limited' : isUpstreamUnavailable ? 'upstream_unavailable' : 'api_error',
     });
     process.exit(1);
     return;
