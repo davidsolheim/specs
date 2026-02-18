@@ -83,7 +83,7 @@ export async function fetchAnalysis(domain: string): Promise<AnalysisResponse> {
   let response: Response | undefined;
   const maxAttempts = 2;
   const retryableStatuses = new Set([429, 502, 503, 504]);
-  const retryableNetworkCodes = new Set(['ECONNRESET', 'ETIMEDOUT', 'EAI_AGAIN']);
+  const retryableNetworkCodes = new Set(['ECONNRESET', 'ETIMEDOUT', 'EAI_AGAIN', 'ENETUNREACH']);
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -121,7 +121,10 @@ export async function fetchAnalysis(domain: string): Promise<AnalysisResponse> {
           throw new Error('Connection timed out: SiteSpecs API connection attempt exceeded the timeout window');
         }
 
-        if (typeErrorWithCause.cause?.code === 'EHOSTUNREACH') {
+        if (
+          typeErrorWithCause.cause?.code === 'EHOSTUNREACH' ||
+          typeErrorWithCause.cause?.code === 'ENETUNREACH'
+        ) {
           throw new Error('Route unreachable: unable to reach SiteSpecs API network');
         }
 

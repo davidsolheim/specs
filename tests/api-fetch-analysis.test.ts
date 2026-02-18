@@ -351,6 +351,31 @@ describe('fetchAnalysis deterministic behavior fixtures', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  test('reliability: retries once and succeeds when first attempt hits ENETUNREACH', async () => {
+    const payload = {
+      domain: 'route-flaky.example.com',
+      url: 'https://route-flaky.example.com',
+      status: 'online',
+      technologies: [],
+    };
+
+    const fetchMock = mock(async () => {
+      if (fetchMock.mock.calls.length === 1) {
+        const unreachableError = new TypeError('fetch failed');
+        (unreachableError as TypeError & { cause?: { code?: string } }).cause = { code: 'ENETUNREACH' };
+        throw unreachableError;
+      }
+
+      return new Response(JSON.stringify(payload), { status: 200 });
+    });
+
+    global.fetch = fetchMock as typeof fetch;
+
+    const result = await fetchAnalysis('route-flaky.example.com');
+    expect(result).toEqual(payload);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   test('failure: maps unreachable route EHOSTUNREACH errors to deterministic message', async () => {
     global.fetch = mock(async () => {
       const unreachableError = new TypeError('fetch failed');
@@ -359,6 +384,19 @@ describe('fetchAnalysis deterministic behavior fixtures', () => {
     }) as typeof fetch;
 
     await expect(fetchAnalysis('isolated-network.example')).rejects.toThrow('Route unreachable: unable to reach SiteSpecs API network');
+  });
+
+  test('failure: retries once then maps repeated ENETUNREACH to deterministic message', async () => {
+    const fetchMock = mock(async () => {
+      const unreachableError = new TypeError('fetch failed');
+      (unreachableError as TypeError & { cause?: { code?: string } }).cause = { code: 'ENETUNREACH' };
+      throw unreachableError;
+    });
+
+    global.fetch = fetchMock as typeof fetch;
+
+    await expect(fetchAnalysis('isolated-network.example')).rejects.toThrow('Route unreachable: unable to reach SiteSpecs API network');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   test('failure: maps refused connection ECONNREFUSED errors to deterministic message', async () => {
