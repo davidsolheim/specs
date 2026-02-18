@@ -51,7 +51,7 @@ export async function fetchAnalysis(domain: string): Promise<AnalysisResponse> {
   let response: Response | undefined;
   const maxAttempts = 2;
   const retryableStatuses = new Set([429, 502, 503, 504]);
-  const retryableNetworkCodes = new Set(['ECONNRESET', 'ETIMEDOUT']);
+  const retryableNetworkCodes = new Set(['ECONNRESET', 'ETIMEDOUT', 'EAI_AGAIN']);
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -75,6 +75,10 @@ export async function fetchAnalysis(domain: string): Promise<AnalysisResponse> {
 
         if (networkCode === 'ENOTFOUND') {
           throw new Error('DNS error: unable to resolve SiteSpecs API host');
+        }
+
+        if (networkCode === 'EAI_AGAIN') {
+          throw new Error('DNS temporarily unavailable: retry SiteSpecs API lookup shortly');
         }
 
         if (networkCode === 'ECONNRESET') {

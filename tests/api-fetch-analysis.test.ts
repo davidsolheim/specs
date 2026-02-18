@@ -151,6 +151,44 @@ describe('fetchAnalysis deterministic behavior fixtures', () => {
     await expect(fetchAnalysis('missing-host.invalid')).rejects.toThrow('DNS error: unable to resolve SiteSpecs API host');
   });
 
+  test('reliability: retries once and succeeds when first attempt hits EAI_AGAIN', async () => {
+    const payload = {
+      domain: 'dns-flaky.example.com',
+      url: 'https://dns-flaky.example.com',
+      status: 'online',
+      technologies: [],
+    };
+
+    const fetchMock = mock(async () => {
+      if (fetchMock.mock.calls.length === 1) {
+        const dnsTemporaryError = new TypeError('fetch failed');
+        (dnsTemporaryError as TypeError & { cause?: { code?: string } }).cause = { code: 'EAI_AGAIN' };
+        throw dnsTemporaryError;
+      }
+
+      return new Response(JSON.stringify(payload), { status: 200 });
+    });
+
+    global.fetch = fetchMock as typeof fetch;
+
+    const result = await fetchAnalysis('dns-flaky.example.com');
+    expect(result).toEqual(payload);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  test('failure: retries once then maps repeated EAI_AGAIN to deterministic message', async () => {
+    const fetchMock = mock(async () => {
+      const dnsTemporaryError = new TypeError('fetch failed');
+      (dnsTemporaryError as TypeError & { cause?: { code?: string } }).cause = { code: 'EAI_AGAIN' };
+      throw dnsTemporaryError;
+    });
+
+    global.fetch = fetchMock as typeof fetch;
+
+    await expect(fetchAnalysis('dns-flaky.example.com')).rejects.toThrow('DNS temporarily unavailable: retry SiteSpecs API lookup shortly');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   test('reliability: retries once and succeeds when first attempt hits ECONNRESET', async () => {
     const payload = {
       domain: 'flaky.example.com',
