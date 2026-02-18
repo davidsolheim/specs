@@ -43,7 +43,7 @@ describe('baseline command', () => {
 
     const fetchMock = mock(async (input: RequestInfo | URL) => {
       // Should normalize like analyze: strip scheme, www, trailing slash.
-      expect(String(input)).toContain('/api/public/analyze?url=Example.com');
+      expect(String(input)).toContain('/api/public/analyze?url=https%3A%2F%2FExample.com');
       return new Response(JSON.stringify(payload), { status: 200 });
     });
     global.fetch = fetchMock as typeof fetch;
@@ -77,7 +77,7 @@ describe('baseline command', () => {
 
     const fetchMock = mock(async (input: RequestInfo | URL) => {
       // Should normalize like analyze: strip scheme, www, trailing slash.
-      expect(String(input)).toContain('/api/public/analyze?url=Example.com');
+      expect(String(input)).toContain('/api/public/analyze?url=https%3A%2F%2FExample.com');
       return new Response(JSON.stringify(payload), { status: 200 });
     });
     global.fetch = fetchMock as typeof fetch;

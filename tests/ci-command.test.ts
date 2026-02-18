@@ -42,7 +42,7 @@ describe('ci command deterministic fixtures', () => {
     await writeFile(baselinePath, JSON.stringify(analysis), 'utf8');
 
     const fetchMock = mock(async (input: RequestInfo | URL) => {
-      expect(String(input)).toContain('/api/public/analyze?url=example.com');
+      expect(String(input)).toContain('/api/public/analyze?url=https%3A%2F%2Fexample.com');
       return new Response(JSON.stringify(analysis), { status: 200 });
     });
     global.fetch = fetchMock as typeof fetch;
