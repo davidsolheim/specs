@@ -609,7 +609,7 @@ describe('analyze command deterministic fixtures', () => {
   });
 
   test('summary-json: api error exits 1 and prints JSON verdict', async () => {
-    const fetchMock = mock(async () => new Response('boom', { status: 503, statusText: 'Service Unavailable' }));
+    const fetchMock = mock(async () => new Response('boom', { status: 400, statusText: 'Bad Request' }));
     global.fetch = fetchMock as typeof fetch;
 
     const logMock = mock(() => {});

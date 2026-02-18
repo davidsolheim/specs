@@ -50,6 +50,7 @@ export async function fetchAnalysis(domain: string): Promise<AnalysisResponse> {
 
   let response: Response | undefined;
   const maxAttempts = 2;
+  const retryableStatuses = new Set([429, 502, 503, 504]);
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -139,7 +140,7 @@ export async function fetchAnalysis(domain: string): Promise<AnalysisResponse> {
       throw error;
     }
 
-    if (response.status !== 429 || attempt === maxAttempts) {
+    if (!retryableStatuses.has(response.status) || attempt === maxAttempts) {
       break;
     }
   }

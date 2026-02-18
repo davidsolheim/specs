@@ -92,6 +92,37 @@ describe('fetchAnalysis deterministic behavior fixtures', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  test('reliability: succeeds on second attempt when first attempt is transient 503', async () => {
+    const payload = {
+      domain: 'example.com',
+      url: 'https://example.com',
+      status: 'online',
+      technologies: [],
+    };
+
+    const fetchMock = mock(async () => {
+      if (fetchMock.mock.calls.length === 1) {
+        return new Response('temporary outage', { status: 503, statusText: 'Service Unavailable' });
+      }
+
+      return new Response(JSON.stringify(payload), { status: 200 });
+    });
+
+    global.fetch = fetchMock as typeof fetch;
+
+    const result = await fetchAnalysis('example.com');
+    expect(result).toEqual(payload);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  test('failure: retries once then returns API status error on repeated transient 503', async () => {
+    const fetchMock = mock(async () => new Response('temporary outage', { status: 503, statusText: 'Service Unavailable' }));
+    global.fetch = fetchMock as typeof fetch;
+
+    await expect(fetchAnalysis('example.com')).rejects.toThrow('API error: 503 Service Unavailable');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   test('failure: maps network errors to deterministic message', async () => {
     global.fetch = mock(async () => {
       throw new TypeError('fetch failed');
