@@ -22,7 +22,7 @@ function classifyFetchFailure(message: string): 'rate_limited' | 'upstream_unava
   if (message.startsWith('Rate limited:')) return 'rate_limited';
 
   if (
-    /^API error: (408|500|502|503|504)\b/.test(message) ||
+    /^API error: (408|500|502|503|504|521|522|524)\b/.test(message) ||
     message.startsWith('DNS temporarily unavailable:') ||
     message.startsWith('DNS error:') ||
     message.startsWith('Connection reset:') ||
