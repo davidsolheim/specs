@@ -2,9 +2,9 @@ import ora from 'ora';
 import chalk from 'chalk';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { fetchAnalysis, type AnalysisResponse } from '../lib/api';
-import { computeJsonDriftCounts, computeJsonDriftDetails } from '../lib/json-diff';
-import { formatOutput } from '../lib/formatter';
+import { fetchAnalysis, type AnalysisResponse } from '../lib/api.js';
+import { computeJsonDriftCounts, computeJsonDriftDetails } from '../lib/json-diff.js';
+import { formatOutput } from '../lib/formatter.js';
 
 interface AnalyzeOptions {
   verbose?: boolean;

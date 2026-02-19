@@ -2,6 +2,7 @@
   "name": "@sitespecs/specs",
   "version": "0.1.0",
   "description": "CLI tool to analyze website tech stack, hosting, and performance",
+  "type": "module",
   "main": "dist/index.js",
   "bin": {
     "specs": "./dist/cli.js"

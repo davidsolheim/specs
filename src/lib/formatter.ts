@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { formatBytes, formatRelativeTime, type AnalysisResponse } from './api';
+import { formatBytes, formatRelativeTime, type AnalysisResponse } from './api.js';
 
 interface FormatOptions {
   verbose?: boolean;

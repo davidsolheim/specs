@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { analyzeCommand } from './commands/analyze';
-import { baselineCommand } from './commands/baseline';
-import { ciCommand } from "./commands/ci";
-import { ghaCommand } from './commands/gha';
+import { analyzeCommand } from './commands/analyze.js';
+import { baselineCommand } from './commands/baseline.js';
+import { ciCommand } from "./commands/ci.js";
+import { ghaCommand } from './commands/gha.js';
 
 const program = new Command();
 

@@ -32,13 +32,17 @@ export interface AnalysisResponse {
   analyzing?: boolean;
 }
 
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 function normalizeInputUrl(domainOrUrl: string): string {
   const trimmed = domainOrUrl.trim();
-  if (/^https?:\/\//i.test(trimmed)) {
-    return trimmed;
+  if (!trimmed) {
+    throw new Error('Domain or URL is required');
   }
 
-  return `https://${trimmed}`;
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
 export function parseRetryAfterMs(retryAfterHeader: string | null): number {
@@ -71,6 +75,85 @@ async function waitForRetryAfter(response: Response): Promise<void> {
   await new Promise<void>((resolve) => {
     setTimeout(resolve, waitMs);
   });
+}
+
+function extractDomain(value: string): string {
+  try {
+    return new URL(value).hostname.replace(/^www\./i, '');
+  } catch {
+    return value.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/$/, '');
+  }
+}
+
+function extractErrorMessage(payload: unknown, fallback: string): string {
+  if (!isObjectRecord(payload)) {
+    return fallback;
+  }
+
+  const parts: string[] = [];
+
+  if (typeof payload.error === 'string') {
+    parts.push(payload.error);
+  }
+
+  if (typeof payload.message === 'string' && payload.message !== payload.error) {
+    parts.push(payload.message);
+  }
+
+  if (Array.isArray(payload.details)) {
+    const firstDetail = payload.details.find((detail) => {
+      return isObjectRecord(detail) && typeof detail.message === 'string';
+    });
+
+    if (isObjectRecord(firstDetail) && typeof firstDetail.message === 'string') {
+      parts.push(firstDetail.message);
+    }
+  }
+
+  return parts.length > 0 ? parts.join(': ') : fallback;
+}
+
+function toAnalysisResponse(payload: unknown, fallbackUrl: string): AnalysisResponse {
+  const fallbackDomain = extractDomain(fallbackUrl);
+
+  if (!isObjectRecord(payload)) {
+    return {
+      domain: fallbackDomain,
+      url: fallbackUrl,
+      status: 'unknown',
+      technologies: [],
+    };
+  }
+
+  const status =
+    payload.status === 'online' ||
+    payload.status === 'offline' ||
+    payload.status === 'unknown' ||
+    payload.status === 'analyzing'
+      ? payload.status
+      : payload.scanning === true || payload.analyzing === true
+        ? 'analyzing'
+        : 'unknown';
+
+  const technologies = Array.isArray(payload.technologies)
+    ? (payload.technologies as AnalysisResponse['technologies'])
+    : [];
+
+  return {
+    domain: typeof payload.domain === 'string' ? payload.domain : fallbackDomain,
+    url: typeof payload.url === 'string' ? payload.url : fallbackUrl,
+    status,
+    technologies,
+    framework: typeof payload.framework === 'string' ? payload.framework : undefined,
+    host: typeof payload.host === 'string' ? payload.host : undefined,
+    seo: isObjectRecord(payload.seo) ? (payload.seo as AnalysisResponse['seo']) : undefined,
+    performance: isObjectRecord(payload.performance)
+      ? (payload.performance as AnalysisResponse['performance'])
+      : undefined,
+    onlineSince: typeof payload.onlineSince === 'string' ? payload.onlineSince : undefined,
+    lastAnalyzed: typeof payload.lastAnalyzed === 'string' ? payload.lastAnalyzed : undefined,
+    analyzing: payload.scanning === true || payload.analyzing === true,
+  };
 }
 
 /**
@@ -121,66 +204,63 @@ export async function fetchAnalysis(domain: string): Promise<AnalysisResponse> {
           throw new Error('Connection timed out: SiteSpecs API connection attempt exceeded the timeout window');
         }
 
-        if (
-          typeErrorWithCause.cause?.code === 'EHOSTUNREACH' ||
-          typeErrorWithCause.cause?.code === 'ENETUNREACH'
-        ) {
+        if (networkCode === 'EHOSTUNREACH' || networkCode === 'ENETUNREACH') {
           throw new Error('Route unreachable: unable to reach SiteSpecs API network');
         }
 
-        if (typeErrorWithCause.cause?.code === 'ECONNREFUSED') {
+        if (networkCode === 'ECONNREFUSED') {
           throw new Error('Connection refused: SiteSpecs API is not accepting connections');
         }
 
-        if (typeErrorWithCause.cause?.code === 'CERT_HAS_EXPIRED') {
+        if (networkCode === 'CERT_HAS_EXPIRED') {
           throw new Error('TLS certificate expired: SiteSpecs API certificate is no longer valid');
         }
 
-        if (typeErrorWithCause.cause?.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE') {
+        if (networkCode === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE') {
           throw new Error('TLS verification failed: unable to verify SiteSpecs API certificate chain');
         }
 
-        if (typeErrorWithCause.cause?.code === 'DEPTH_ZERO_SELF_SIGNED_CERT') {
+        if (networkCode === 'DEPTH_ZERO_SELF_SIGNED_CERT') {
           throw new Error('TLS trust failure: SiteSpecs API returned a self-signed certificate');
         }
 
-        if (typeErrorWithCause.cause?.code === 'ERR_TLS_CERT_ALTNAME_INVALID') {
+        if (networkCode === 'ERR_TLS_CERT_ALTNAME_INVALID') {
           throw new Error('TLS hostname mismatch: SiteSpecs API certificate does not match the requested host');
         }
 
-        if (typeErrorWithCause.cause?.code === 'CERT_REVOKED') {
+        if (networkCode === 'CERT_REVOKED') {
           throw new Error('TLS certificate revoked: SiteSpecs API certificate has been revoked by its issuer');
         }
 
-        if (typeErrorWithCause.cause?.code === 'CERT_SIGNATURE_FAILURE') {
+        if (networkCode === 'CERT_SIGNATURE_FAILURE') {
           throw new Error('TLS certificate signature failure: SiteSpecs API certificate signature validation failed');
         }
 
-        if (typeErrorWithCause.cause?.code === 'ERR_SSL_WRONG_VERSION_NUMBER') {
+        if (networkCode === 'ERR_SSL_WRONG_VERSION_NUMBER') {
           throw new Error('TLS protocol mismatch: SiteSpecs API rejected the negotiated TLS version');
         }
 
-        if (typeErrorWithCause.cause?.code === 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY') {
+        if (networkCode === 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY') {
           throw new Error('TLS issuer validation failed: unable to retrieve SiteSpecs API issuer certificate locally');
         }
 
-        if (typeErrorWithCause.cause?.code === 'UNABLE_TO_GET_ISSUER_CERT') {
+        if (networkCode === 'UNABLE_TO_GET_ISSUER_CERT') {
           throw new Error('TLS issuer certificate missing: unable to retrieve SiteSpecs API issuer certificate');
         }
 
-        if (typeErrorWithCause.cause?.code === 'UNABLE_TO_DECRYPT_CERT_SIGNATURE') {
+        if (networkCode === 'UNABLE_TO_DECRYPT_CERT_SIGNATURE') {
           throw new Error('TLS certificate signature decode failure: unable to decrypt SiteSpecs API certificate signature');
         }
 
-        if (typeErrorWithCause.cause?.code === 'CERT_CHAIN_TOO_LONG') {
+        if (networkCode === 'CERT_CHAIN_TOO_LONG') {
           throw new Error('TLS certificate chain too long: SiteSpecs API certificate chain exceeds validation depth');
         }
 
-        if (typeErrorWithCause.cause?.code === 'SELF_SIGNED_CERT_IN_CHAIN') {
+        if (networkCode === 'SELF_SIGNED_CERT_IN_CHAIN') {
           throw new Error('TLS trust chain failure: SiteSpecs API certificate chain includes a self-signed certificate');
         }
 
-        if (typeErrorWithCause.cause?.code === 'CERT_NOT_YET_VALID') {
+        if (networkCode === 'CERT_NOT_YET_VALID') {
           throw new Error('TLS certificate not yet valid: SiteSpecs API certificate validity window has not started');
         }
 
@@ -201,20 +281,39 @@ export async function fetchAnalysis(domain: string): Promise<AnalysisResponse> {
     throw new Error('Network error: unable to reach SiteSpecs API');
   }
 
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    payload = undefined;
+  }
+
   if (!response.ok) {
     if (response.status === 404) {
       throw new Error(`Domain not found: ${domain}`);
     }
 
     if (response.status === 429) {
-      throw new Error('Rate limited: SiteSpecs API throttled this request (HTTP 429)');
+      const message = extractErrorMessage(payload, 'SiteSpecs API throttled this request (HTTP 429)');
+      throw new Error(`Rate limited: ${message}`);
     }
 
-    throw new Error(`API error: ${response.status} ${response.statusText}`);
+    const message = extractErrorMessage(payload, `${response.status} ${response.statusText}`);
+    throw new Error(`API error: ${message}`);
   }
 
-  const data = await response.json();
-  return data as AnalysisResponse;
+  if (isObjectRecord(payload) && 'success' in payload) {
+    if (payload.success === false) {
+      const message = extractErrorMessage(payload, 'API error');
+      throw new Error(message);
+    }
+
+    if (payload.data && isObjectRecord(payload.data)) {
+      return toAnalysisResponse(payload.data, normalizedUrl);
+    }
+  }
+
+  return toAnalysisResponse(payload, normalizedUrl);
 }
 
 /**
