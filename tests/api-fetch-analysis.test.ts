@@ -241,6 +241,14 @@ describe('fetchAnalysis deterministic behavior fixtures', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  test('failure: retries once then returns API status error on repeated transient 520', async () => {
+    const fetchMock = mock(async () => new Response('unknown edge error', { status: 520, statusText: 'Web Server Returned an Unknown Error' }));
+    global.fetch = fetchMock as typeof fetch;
+
+    await expect(fetchAnalysis('example.com')).rejects.toThrow('API error: 520 Web Server Returned an Unknown Error');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   test('failure: maps network errors to deterministic message', async () => {
     global.fetch = mock(async () => {
       throw new TypeError('fetch failed');
