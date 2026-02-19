@@ -959,6 +959,37 @@ describe('analyze command deterministic fixtures', () => {
     });
   });
 
+  test('summary-json: repeated 528 API error exits 1 with upstream_unavailable marker', async () => {
+    const fetchMock = mock(async () =>
+      new Response('site overloaded', { status: 528, statusText: 'Site is Overloaded' })
+    );
+    global.fetch = fetchMock as typeof fetch;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await expect(analyzeCommand('example.com', { summaryJson: true })).rejects.toThrow('EXIT_1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: false,
+      domain: 'example.com',
+      drift_changed: 0,
+      drift_added: 0,
+      drift_removed: 0,
+      exit: 1,
+      error: 'upstream_unavailable',
+    });
+  });
+
   test('summary-json: repeated 530 API error exits 1 with upstream_unavailable marker', async () => {
     const fetchMock = mock(async () =>
       new Response('origin dns error', { status: 530, statusText: 'Origin DNS Error' })

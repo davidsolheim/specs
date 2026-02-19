@@ -282,6 +282,14 @@ describe('fetchAnalysis deterministic behavior fixtures', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  test('failure: retries once then returns API status error on repeated transient 528', async () => {
+    const fetchMock = mock(async () => new Response('site overloaded', { status: 528, statusText: 'Site is Overloaded' }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(fetchAnalysis('example.com')).rejects.toThrow('API error: 528 Site is Overloaded');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   test('failure: retries once then returns API status error on repeated transient 530', async () => {
     const fetchMock = mock(async () => new Response('origin dns error', { status: 530, statusText: 'Origin DNS Error' }));
     global.fetch = fetchMock as unknown as typeof fetch;
