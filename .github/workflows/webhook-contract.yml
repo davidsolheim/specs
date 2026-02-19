@@ -36,10 +36,14 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run contract tests
-        run: bun test tests/api-formatters.test.ts | tee webhook-contract-test-output.txt
+        run: |
+          mkdir -p artifacts
+          set -o pipefail
+          bun run test:webhook-contract | tee artifacts/webhook-contract-test-output.txt
 
       - name: Upload contract test artifact
         uses: actions/upload-artifact@v4
         with:
           name: specs-webhook-contract-test-output
-          path: webhook-contract-test-output.txt
+          path: artifacts/webhook-contract-test-output.txt
+          if-no-files-found: error

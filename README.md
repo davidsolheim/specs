@@ -100,6 +100,12 @@ $ specs example.com
 
 The CLI connects to the sitespecs.com API to fetch real-time analysis data.
 
+### Deterministic transport/TLS error contract
+
+- See `docs/cli-transport-tls-error-contract.md` for the canonical mapping table:
+  `error code -> deterministic CLI message -> operator remediation`.
+- This contract is enforced by `tests/api-fetch-analysis.test.ts` and CI `webhook-contract` checks.
+
 ## Development
 
 ```bash
