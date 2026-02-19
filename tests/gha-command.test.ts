@@ -66,7 +66,7 @@ describe('gha command', () => {
     expect(logMock).toHaveBeenCalledTimes(2);
     expect(String((logMock as any).mock.calls[0][0])).toBe('- name: Specs CI');
     expect(String((logMock as any).mock.calls[1][0])).toBe(
-      '  run: npx -y @sitespecs/specs@latest ci example.com --baseline baseline.json',
+      '  run: npx -y @sitespecs/specs@latest ci example.com --baseline baseline.json --fail-on-diff',
     );
   });
 
@@ -1105,7 +1105,7 @@ describe('gha command', () => {
     await ghaCommand('example.com', { baseline: 'baseline.json', version: '0.1.0' } as any);
 
     const lines = (logMock as any).mock.calls.map((c: any[]) => String(c[0]));
-    expect(lines).toContain('  run: npx -y @sitespecs/specs@0.1.0 ci example.com --baseline baseline.json');
+    expect(lines).toContain('  run: npx -y @sitespecs/specs@0.1.0 ci example.com --baseline baseline.json --fail-on-diff');
   });
 
   test('pinned version workflow: uses @<version> in YAML', async () => {
@@ -1120,7 +1120,7 @@ describe('gha command', () => {
 
     const calls = (logMock as any).mock.calls;
     const last = String(calls[calls.length - 1][0]);
-    expect(last).toContain('run: npx -y @sitespecs/specs@0.1.0 ci example.com --baseline baseline.json');
+    expect(last).toContain('run: npx -y @sitespecs/specs@0.1.0 ci example.com --baseline baseline.json --fail-on-diff');
   });
 
   test('--job without --workflow: exits 2 and prints deterministic stderr', async () => {

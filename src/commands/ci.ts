@@ -6,6 +6,7 @@ type CiOptions = {
   baseline?: string;
   save?: string;
   saveFlagPresent?: boolean;
+  failOnDiff?: boolean;
 };
 
 type CiSummaryJsonOutput = {
@@ -95,10 +96,12 @@ export async function ciCommand(domain: string, options: CiOptions) {
 
   const { changed, added, removed } = computeJsonDriftCounts(baselineJson, data);
   const drift = changed + added + removed;
-  const driftExit = drift > 0 ? 1 : 0;
+  const hasDrift = drift > 0;
+  const failOnDiff = options.failOnDiff === true;
+  const driftExit = hasDrift && failOnDiff ? 1 : 0;
 
   const out: CiSummaryJsonOutput = {
-    ok: driftExit === 0,
+    ok: !hasDrift,
     domain,
     drift_changed: changed,
     drift_added: added,

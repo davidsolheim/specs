@@ -10,4 +10,4 @@ jobs:
         with:
           node-version: 20
       - name: Specs CI
-        run: npx -y @sitespecs/specs@latest ci example.com --baseline baseline.json
+        run: npx -y @sitespecs/specs@latest ci example.com --baseline baseline.json --fail-on-diff

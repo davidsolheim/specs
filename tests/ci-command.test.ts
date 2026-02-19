@@ -567,7 +567,7 @@ describe('ci command deterministic fixtures', () => {
     expect(out.drift_removed).toBe(0);
   });
 
-  test('drift path: baseline differs -> ok=false exit=1 and single JSON stdout line', async () => {
+  test('drift path + --fail-on-diff: baseline differs -> ok=false exit=1 and single JSON stdout line', async () => {
     const baseline = { tech: { a: 1 } };
     const analysis = { tech: { a: 2 } };
 
@@ -586,7 +586,7 @@ describe('ci command deterministic fixtures', () => {
     });
     process.exit = exitMock as typeof process.exit;
 
-    await expect(ciCommand('example.com', { baseline: baselinePath })).rejects.toThrow('EXIT_1');
+    await expect(ciCommand('example.com', { baseline: baselinePath, failOnDiff: true })).rejects.toThrow('EXIT_1');
     expect(exitMock).toHaveBeenCalledWith(1);
 
     expect(logMock).toHaveBeenCalledTimes(1);
@@ -597,6 +597,35 @@ describe('ci command deterministic fixtures', () => {
     expect(out.ok).toBe(false);
     expect(out.domain).toBe('example.com');
     expect(out.exit).toBe(1);
+  });
+
+  test('drift path without --fail-on-diff: emits drift but exits 0', async () => {
+    const baseline = { tech: { a: 1 } };
+    const analysis = { tech: { a: 2 } };
+
+    const dir = await mkdtemp(join(tmpdir(), 'specs-tests-'));
+    const baselinePath = join(dir, 'baseline.json');
+    await writeFile(baselinePath, JSON.stringify(baseline), 'utf8');
+
+    global.fetch = mock(async () => new Response(JSON.stringify(analysis), { status: 200 })) as typeof fetch;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await ciCommand('example.com', { baseline: baselinePath });
+
+    expect(exitMock).toHaveBeenCalledTimes(0);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out.ok).toBe(false);
+    expect(out.exit).toBe(0);
+    expect(out.drift_changed).toBe(1);
   });
 
   test('happy path saves file (stdout unchanged)', async () => {

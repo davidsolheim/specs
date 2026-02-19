@@ -355,6 +355,7 @@ export async function ghaCommand(
       domain +
       " --baseline " +
       options.baseline +
+      " --fail-on-diff" +
       (artifactPath !== undefined ? " --save " + artifactPath : "") +
       "\n" +
       (workingDirectory !== undefined
@@ -424,6 +425,7 @@ export async function ghaCommand(
       " ci " +
       domain +
       " --baseline " +
-      options.baseline,
+      options.baseline +
+      " --fail-on-diff",
   );
 }

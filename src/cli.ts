@@ -31,14 +31,16 @@ program
   .argument("<domain>")
   .option("--baseline <path>")
   .option("--save [path]", "Save the raw analysis JSON to a file")
+  .option('--fail-on-diff', 'Exit 1 when drift is detected (recommended for CI gating)')
   .action((
     domain: string,
-    opts: { baseline?: string; save?: string | boolean }
+    opts: { baseline?: string; save?: string | boolean; failOnDiff?: boolean }
   ) =>
     ciCommand(domain, {
       baseline: opts.baseline,
       save: typeof opts.save === 'string' ? opts.save : undefined,
       saveFlagPresent: opts.save !== undefined,
+      failOnDiff: opts.failOnDiff,
     }),
   );
 
