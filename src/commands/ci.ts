@@ -1,6 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { fetchAnalysis } from '../lib/api';
-import { computeJsonDriftCounts } from '../lib/json-diff';
+import { fetchAnalysis } from '../lib/api.js';
+import { computeJsonDriftCounts } from '../lib/json-diff.js';
 
 type CiOptions = {
   baseline?: string;
@@ -126,4 +126,3 @@ export async function ciCommand(domain: string, options: CiOptions) {
 
   if (out.exit !== 0) process.exit(out.exit);
 }
-

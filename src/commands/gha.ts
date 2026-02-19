@@ -11,7 +11,6 @@ export async function ghaCommand(
     artifactRetentionDays?: number | string;
     concurrency?: string;
     permissions?: string;
-    timeoutMinutes?: number | string;
     fetchDepth?: number | string;
     name?: string;
     job?: string;
@@ -101,12 +100,6 @@ export async function ghaCommand(
     parsedFetchDepth = n;
   }
 
-  if (options.timeoutMinutes !== undefined && !options.workflow) {
-    console.error("WORKFLOW_TIMEOUT_MINUTES_REQUIRES_WORKFLOW");
-    process.exit(2);
-    return;
-  }
-
   if (options.concurrency !== undefined && !options.workflow) {
     console.error("WORKFLOW_CONCURRENCY_REQUIRES_WORKFLOW");
     process.exit(2);
@@ -129,16 +122,6 @@ export async function ghaCommand(
     const mode = options.permissions.trim();
     if (mode !== "minimal") {
       console.error("WORKFLOW_PERMISSIONS_INVALID");
-      process.exit(2);
-      return;
-    }
-  }
-
-  let timeout: number | undefined;
-  if (options.workflow && options.timeoutMinutes !== undefined) {
-    timeout = Number(String(options.timeoutMinutes).trim());
-    if (!Number.isInteger(timeout) || timeout < 1) {
-      console.error("WORKFLOW_TIMEOUT_MINUTES_INVALID");
       process.exit(2);
       return;
     }
@@ -251,7 +234,7 @@ export async function ghaCommand(
   if (
     options.workflow &&
     options.timeoutMinutes !== undefined &&
-    (!Number.isInteger(parsedTimeoutMinutes) || parsedTimeoutMinutes < 1)
+    (parsedTimeoutMinutes === undefined || !Number.isInteger(parsedTimeoutMinutes) || parsedTimeoutMinutes < 1)
   ) {
     console.error('WORKFLOW_TIMEOUT_MINUTES_INVALID');
     process.exit(2);

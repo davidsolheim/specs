@@ -1,6 +1,6 @@
 import { mkdir, stat, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { fetchAnalysis } from '../lib/api';
+import { fetchAnalysis } from '../lib/api.js';
 
 function classifyFetchError(error: unknown): 'rate_limited' | 'upstream_unavailable' | 'api_error' {
   const message = error instanceof Error ? error.message : String(error);
