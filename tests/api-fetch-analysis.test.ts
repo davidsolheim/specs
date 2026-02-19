@@ -233,6 +233,14 @@ describe('fetchAnalysis deterministic behavior fixtures', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  test('failure: retries once then returns API status error on repeated transient 521', async () => {
+    const fetchMock = mock(async () => new Response('web server down', { status: 521, statusText: 'Web Server Is Down' }));
+    global.fetch = fetchMock as typeof fetch;
+
+    await expect(fetchAnalysis('example.com')).rejects.toThrow('API error: 521 Web Server Is Down');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   test('failure: retries once then returns API status error on repeated transient 523', async () => {
     const fetchMock = mock(async () => new Response('origin unreachable', { status: 523, statusText: 'Origin Is Unreachable' }));
     global.fetch = fetchMock as typeof fetch;
