@@ -130,6 +130,7 @@ program
   )
   .option('--save <path>', 'Save the raw analysis JSON to a file')
   .option('--diff <path>', 'Compare against a baseline analysis JSON file (summary mode only)')
+  .option('--trend <path>', 'Compare current drift counts against a previous summary JSON verdict (requires --diff and summary mode)')
   .option(
     '--top-changes <n>',
     'In --summary --diff mode, include the top N changed/added/removed leaf paths (lexicographic)',

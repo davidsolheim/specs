@@ -24,6 +24,8 @@ specs example.com --json
 # ci: single-line JSON verdict (and when used with --diff, defaults to failing on drift)
 specs example.com --profile ci
 specs example.com --profile ci --diff baseline.json
+# compare current drift to a prior summary snapshot
+specs example.com --summary-json --diff baseline.json --trend previous-summary.json
 #
 # report: verbose human-readable output
 specs example.com --profile report

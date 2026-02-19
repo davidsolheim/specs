@@ -1188,4 +1188,78 @@ describe('analyze command deterministic fixtures', () => {
       error: null,
     });
   });
+
+  test('summary-json+diff+trend: emits deterministic trend deltas from prior summary snapshot', async () => {
+    const payload = {
+      domain: 'example.com',
+      url: 'https://example.com',
+      status: 'online',
+      technologies: [],
+      seo: { score: 93 },
+      host: 'ExampleHost',
+    };
+
+    const baseline = { ...payload, seo: { score: 91 } };
+
+    const dir = await mkdtemp(join(tmpdir(), 'specs-tests-'));
+    const baselinePath = join(dir, 'baseline.json');
+    const trendPath = join(dir, 'trend.json');
+    await writeFile(baselinePath, JSON.stringify(baseline), 'utf8');
+    await writeFile(
+      trendPath,
+      JSON.stringify({ drift_changed: 3, drift_added: 1, drift_removed: 2 }),
+      'utf8'
+    );
+
+    global.fetch = mock(async () => new Response(JSON.stringify(payload), { status: 200 })) as typeof fetch;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await analyzeCommand('example.com', { summaryJson: true, diff: baselinePath, trend: trendPath });
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: true,
+      domain: 'example.com',
+      exit: 0,
+      drift_changed: 1,
+      drift_added: 0,
+      drift_removed: 0,
+      trend_delta_changed: -2,
+      trend_delta_added: -1,
+      trend_delta_removed: -2,
+      error: null,
+    });
+  });
+
+  test('summary-json+trend: exits 2 with baseline_missing when used without --diff', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await expect(analyzeCommand('example.com', { summaryJson: true, trend: '/tmp/trend.json' })).rejects.toThrow(
+      'EXIT_2'
+    );
+
+    expect(exitMock).toHaveBeenCalledWith(2);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: false,
+      domain: 'example.com',
+      drift_changed: 0,
+      drift_added: 0,
+      drift_removed: 0,
+      exit: 2,
+      error: 'baseline_missing',
+    });
+  });
 });
