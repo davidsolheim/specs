@@ -1,9 +1,9 @@
 name: SiteSpecs
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
+concurrency:
+  group: specs-ci-example
+  cancel-in-progress: true
 jobs:
   sitespecs:
     runs-on: ubuntu-latest

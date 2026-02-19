@@ -1,11 +1,9 @@
 name: SiteSpecs
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 jobs:
   sitespecs:
+    name: My Specs CI
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

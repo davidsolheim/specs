@@ -1,12 +1,10 @@
 name: SiteSpecs
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 jobs:
   sitespecs:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - name: Specs CI

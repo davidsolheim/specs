@@ -1,0 +1,15 @@
+Evidence: specs gha --working-directory <dir> feature (TDD)
+
+Repo: teton-web/specs
+Branch: elias
+
+Feature:
+- `specs gha <domain> --baseline <path> --workflow --working-directory <dir>`
+- Adds `working-directory: <dir>` to the "Specs CI" step in generated workflow YAML
+- Misuse without `--workflow` exits 2 and prints deterministic stderr token `WORKFLOW_WORKING_DIRECTORY_REQUIRES_WORKFLOW`
+
+Test run:
+- Command: bun test
+- Result: PASS (110 pass / 0 fail)
+
+(Full bun output captured in OpenClaw run log; summary above is the canonical evidence signal.)

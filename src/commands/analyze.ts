@@ -13,6 +13,7 @@ interface AnalyzeOptions {
   summaryJson?: boolean;
   profile?: string;
   diff?: string;
+  trend?: string;
   topChanges?: number;
   failOnDiff?: boolean;
   tech?: boolean;
@@ -33,12 +34,35 @@ type SummaryJsonOutput = {
   drift_changed: number;
   drift_added: number;
   drift_removed: number;
+  trend_delta_changed?: number;
+  trend_delta_added?: number;
+  trend_delta_removed?: number;
   top_changed?: string[];
   top_added?: string[];
   top_removed?: string[];
   exit: number;
   error: string | null;
 };
+
+function classifyFetchFailure(message: string): 'rate_limited' | 'upstream_unavailable' | 'api_error' {
+  if (message.startsWith('Rate limited:')) return 'rate_limited';
+
+  if (
+    /^API error: (408|500|502|503|504|520|521|522|523|524|525|526|527|528|530)\b/.test(message) ||
+    message.startsWith('DNS temporarily unavailable:') ||
+    message.startsWith('DNS error:') ||
+    message.startsWith('Connection reset:') ||
+    message.startsWith('Connection timed out:') ||
+    message.startsWith('Request timed out:') ||
+    message.startsWith('Route unreachable:') ||
+    message.startsWith('Connection refused:') ||
+    message === 'Network error: unable to reach SiteSpecs API'
+  ) {
+    return 'upstream_unavailable';
+  }
+
+  return 'api_error';
+}
 
 export async function analyzeCommand(domain: string, options: AnalyzeOptions) {
   const effectiveOptions: AnalyzeOptions = { ...options };
@@ -135,7 +159,13 @@ export async function analyzeCommand(domain: string, options: AnalyzeOptions) {
       return;
     }
 
+    if (effectiveOptions.trend && !baselinePath) {
+      exitWith(baseOut({ ok: false, exit: 2, error: 'baseline_missing' }));
+      return;
+    }
+
     let baselineJson: unknown | undefined;
+    let trendBaseline: { drift_changed: number; drift_added: number; drift_removed: number } | undefined;
     if (baselinePath) {
       let raw: string;
       try {
@@ -153,11 +183,48 @@ export async function analyzeCommand(domain: string, options: AnalyzeOptions) {
       }
     }
 
+    if (effectiveOptions.trend) {
+      let trendRaw: string;
+      try {
+        trendRaw = await readFile(effectiveOptions.trend, 'utf8');
+      } catch {
+        exitWith(baseOut({ ok: false, exit: 2, error: `trend_missing: ${effectiveOptions.trend}` }));
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(trendRaw) as Partial<{ drift_changed: number; drift_added: number; drift_removed: number }>;
+        if (
+          typeof parsed.drift_changed !== 'number' ||
+          typeof parsed.drift_added !== 'number' ||
+          typeof parsed.drift_removed !== 'number'
+        ) {
+          throw new Error('invalid_trend');
+        }
+
+        trendBaseline = {
+          drift_changed: parsed.drift_changed,
+          drift_added: parsed.drift_added,
+          drift_removed: parsed.drift_removed,
+        };
+      } catch {
+        exitWith(baseOut({ ok: false, exit: 2, error: `trend_parse_error: ${effectiveOptions.trend}` }));
+        return;
+      }
+    }
+
     let data: unknown;
     try {
       data = await fetchAnalysis(normalizedDomain);
     } catch (error) {
-      exitWith(baseOut({ ok: false, exit: 1, error: 'api_error' }));
+      const message = error instanceof Error ? error.message : String(error);
+      exitWith(
+        baseOut({
+          ok: false,
+          exit: 1,
+          error: classifyFetchFailure(message),
+        })
+      );
       return;
     }
 
@@ -185,6 +252,12 @@ export async function analyzeCommand(domain: string, options: AnalyzeOptions) {
         error: null,
       };
 
+      if (trendBaseline) {
+        out.trend_delta_changed = changed - trendBaseline.drift_changed;
+        out.trend_delta_added = added - trendBaseline.drift_added;
+        out.trend_delta_removed = removed - trendBaseline.drift_removed;
+      }
+
       if (topN !== undefined) {
         const details = computeJsonDriftDetails(baselineJson, data);
         out.top_changed = details.changedPaths.slice(0, topN);
@@ -208,6 +281,7 @@ export async function analyzeCommand(domain: string, options: AnalyzeOptions) {
 
   if (effectiveOptions.summary) {
     let baselineJson: unknown | undefined;
+    let trendBaseline: { drift_changed: number; drift_added: number; drift_removed: number } | undefined;
 
     if (effectiveOptions.diff) {
       if (effectiveOptions.topChanges !== undefined) {
@@ -221,6 +295,34 @@ export async function analyzeCommand(domain: string, options: AnalyzeOptions) {
       try {
         const raw = await readFile(effectiveOptions.diff, 'utf8');
         baselineJson = JSON.parse(raw);
+      } catch {
+        console.log(`SUMMARY ${normalizedDomain} exit=2`);
+        process.exit(2);
+      }
+    }
+
+    if (effectiveOptions.trend && !effectiveOptions.diff) {
+      console.log(`SUMMARY ${normalizedDomain} exit=2`);
+      process.exit(2);
+    }
+
+    if (effectiveOptions.trend) {
+      try {
+        const trendRaw = await readFile(effectiveOptions.trend, 'utf8');
+        const parsed = JSON.parse(trendRaw) as Partial<{ drift_changed: number; drift_added: number; drift_removed: number }>;
+        if (
+          typeof parsed.drift_changed !== 'number' ||
+          typeof parsed.drift_added !== 'number' ||
+          typeof parsed.drift_removed !== 'number'
+        ) {
+          throw new Error('invalid_trend');
+        }
+
+        trendBaseline = {
+          drift_changed: parsed.drift_changed,
+          drift_added: parsed.drift_added,
+          drift_removed: parsed.drift_removed,
+        };
       } catch {
         console.log(`SUMMARY ${normalizedDomain} exit=2`);
         process.exit(2);
@@ -251,13 +353,16 @@ export async function analyzeCommand(domain: string, options: AnalyzeOptions) {
         const exit = effectiveOptions.failOnDiff && drift > 0 ? 1 : 0;
 
         let extra = '';
+        if (trendBaseline) {
+          extra += ` trend_delta_changed=${changed - trendBaseline.drift_changed} trend_delta_added=${added - trendBaseline.drift_added} trend_delta_removed=${removed - trendBaseline.drift_removed}`;
+        }
         if (effectiveOptions.topChanges !== undefined) {
           const n = effectiveOptions.topChanges;
           const details = computeJsonDriftDetails(baselineJson, data);
           const topChanged = details.changedPaths.slice(0, n).join(',');
           const topAdded = details.addedPaths.slice(0, n).join(',');
           const topRemoved = details.removedPaths.slice(0, n).join(',');
-          extra = ` top_changed=${topChanged} top_added=${topAdded} top_removed=${topRemoved}`;
+          extra += ` top_changed=${topChanged} top_added=${topAdded} top_removed=${topRemoved}`;
         }
 
         console.log(

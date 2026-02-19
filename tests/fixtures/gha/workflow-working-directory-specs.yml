@@ -1,9 +1,6 @@
 name: SiteSpecs
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 jobs:
   sitespecs:
     runs-on: ubuntu-latest
@@ -11,3 +8,4 @@ jobs:
       - uses: actions/checkout@v4
       - name: Specs CI
         run: npx -y @sitespecs/specs@latest ci example.com --baseline baseline.json --fail-on-diff
+        working-directory: specs

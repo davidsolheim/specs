@@ -30,7 +30,19 @@ program
   .description("Run CI analysis with baseline diff")
   .argument("<domain>")
   .option("--baseline <path>")
-  .action((domain: string, opts: { baseline?: string }) => ciCommand(domain, { baseline: opts.baseline }));
+  .option("--save [path]", "Save the raw analysis JSON to a file")
+  .option('--fail-on-diff', 'Exit 1 when drift is detected (recommended for CI gating)')
+  .action((
+    domain: string,
+    opts: { baseline?: string; save?: string | boolean; failOnDiff?: boolean }
+  ) =>
+    ciCommand(domain, {
+      baseline: opts.baseline,
+      save: typeof opts.save === 'string' ? opts.save : undefined,
+      saveFlagPresent: opts.save !== undefined,
+      failOnDiff: opts.failOnDiff,
+    }),
+  );
 
 program
   .command('gha')
@@ -38,7 +50,16 @@ program
   .argument('<domain>', 'Domain to analyze in CI (e.g., example.com)')
   .option('--baseline <path>', 'Path to a baseline analysis JSON file')
   .option('--workflow', 'Print a full GitHub Actions workflow YAML')
+  .option('--artifact <path>', 'Upload analysis JSON as a workflow artifact (requires --workflow)')
+  .option('--artifact-retention-days <n>', 'Set upload-artifact retention-days (requires --workflow and --artifact)')
+  .option('--concurrency <group>', 'Set the workflow concurrency group (requires --workflow)')
+  .option('--permissions <mode>', 'Set workflow permissions mode (requires --workflow)')
+  .option('--job <id>', 'Set the workflow job id (requires --workflow)')
+  .option('--job-name <name>', 'Set the workflow job name (requires --workflow)')
   .option('--runs-on <label>', 'Set the workflow job runner (requires --workflow)')
+  .option('--working-directory <dir>', 'Set working-directory on the Specs CI step (requires --workflow)')
+  .option('--fetch-depth <n>', 'Set actions/checkout fetch-depth (requires --workflow)')
+  .option("--timeout-minutes <n>", "Job timeout in minutes")
   .option('--node-version <version>', 'Set the workflow Node.js version (requires --workflow)')
   .option("--manual", "Include workflow_dispatch trigger")
   .option('--pull-request', 'Add a pull_request trigger to the workflow YAML (requires --workflow)')
@@ -53,7 +74,16 @@ program
     opts: {
       baseline?: string;
       workflow?: boolean;
+      artifact?: string;
+      artifactRetentionDays?: string;
+      concurrency?: string;
+      permissions?: string;
+      job?: string;
+      jobName?: string;
       runsOn?: string;
+      workingDirectory?: string;
+      fetchDepth?: string;
+      timeoutMinutes?: string;
       nodeVersion?: string;
       manual?: boolean;
       pullRequest?: boolean;
@@ -68,7 +98,16 @@ program
     ghaCommand(domain, {
       baseline: opts.baseline,
       workflow: opts.workflow,
+      artifact: opts.artifact,
+      artifactRetentionDays: opts.artifactRetentionDays,
+      concurrency: opts.concurrency,
+      permissions: opts.permissions,
+      job: opts.job,
+      jobName: opts.jobName,
       runsOn: opts.runsOn,
+      workingDirectory: opts.workingDirectory,
+      fetchDepth: opts.fetchDepth,
+      timeoutMinutes: opts.timeoutMinutes,
       nodeVersion: opts.nodeVersion,
       manual: opts.manual,
       pullRequest: opts.pullRequest,
@@ -93,6 +132,7 @@ program
   )
   .option('--save <path>', 'Save the raw analysis JSON to a file')
   .option('--diff <path>', 'Compare against a baseline analysis JSON file (summary mode only)')
+  .option('--trend <path>', 'Compare current drift counts against a previous summary JSON verdict (requires --diff and summary mode)')
   .option(
     '--top-changes <n>',
     'In --summary --diff mode, include the top N changed/added/removed leaf paths (lexicographic)',

@@ -1,0 +1,129 @@
+$ bun test
+bun test v1.3.9 (cf6cdbbb)
+
+tests/baseline-command.test.ts:
+(pass) baseline command > missing --out: exits 2 and does not print BASELINE_SAVED [0.43ms]
+(pass) baseline command > happy path: writes baseline file and prints exactly one BASELINE_SAVED line [1.21ms]
+(pass) baseline command > --stdout: prints exactly one JSON line and no other logs [0.05ms]
+(pass) baseline command > --stdout with --out: exits 2 with deterministic conflict stderr and does not fetch [0.12ms]
+(pass) baseline command > --stdout with --force: exits 2 with deterministic invalid-force stderr and does not fetch [0.10ms]
+(pass) baseline command > out path exists (no --force): exits 2, prints exists error, and does not fetch [0.38ms]
+(pass) baseline command > out path exists (--force): overwrites and prints BASELINE_SAVED [0.43ms]
+(pass) baseline command > api failure: exits 1 [0.20ms]
+(pass) baseline command > profile provided: exits 2 [0.22ms]
+
+tests/api-fetch-analysis.test.ts:
+(pass) fetchAnalysis deterministic behavior fixtures > smoke: builds analyze URL, sets User-Agent, and returns API payload
+(pass) fetchAnalysis deterministic behavior fixtures > failure: returns domain-not-found error on 404 [0.32ms]
+(pass) fetchAnalysis deterministic behavior fixtures > failure: returns API status error on non-404 non-2xx [0.06ms]
+(pass) fetchAnalysis deterministic behavior fixtures > failure: maps network errors to deterministic message [0.05ms]
+(pass) fetchAnalysis deterministic behavior fixtures > failure: maps timeout aborts to deterministic message [0.11ms]
+(pass) fetchAnalysis deterministic behavior fixtures > failure: maps DNS ENOTFOUND errors to deterministic message [0.05ms]
+(pass) fetchAnalysis deterministic behavior fixtures > failure: maps connection reset ECONNRESET errors to deterministic message [0.05ms]
+(pass) fetchAnalysis deterministic behavior fixtures > failure: maps unreachable route EHOSTUNREACH errors to deterministic message [0.08ms]
+(pass) fetchAnalysis deterministic behavior fixtures > failure: maps refused connection ECONNREFUSED errors to deterministic message [0.04ms]
+(pass) fetchAnalysis deterministic behavior fixtures > failure: maps expired certificate CERT_HAS_EXPIRED errors to deterministic message [0.01ms]
+(pass) fetchAnalysis deterministic behavior fixtures > failure: maps unverified certificate UNABLE_TO_VERIFY_LEAF_SIGNATURE errors to deterministic message [0.07ms]
+(pass) fetchAnalysis deterministic behavior fixtures > failure: maps self-signed certificate DEPTH_ZERO_SELF_SIGNED_CERT errors to deterministic message [0.04ms]
+(pass) fetchAnalysis deterministic behavior fixtures > failure: maps TLS hostname mismatch ERR_TLS_CERT_ALTNAME_INVALID errors to deterministic message [0.04ms]
+(pass) fetchAnalysis deterministic behavior fixtures > failure: maps revoked certificate CERT_REVOKED errors to deterministic message [0.04ms]
+(pass) fetchAnalysis deterministic behavior fixtures > failure: maps certificate signature failures CERT_SIGNATURE_FAILURE to deterministic message [0.04ms]
+(pass) fetchAnalysis deterministic behavior fixtures > failure: maps TLS protocol mismatches ERR_SSL_WRONG_VERSION_NUMBER to deterministic message [0.05ms]
+(pass) fetchAnalysis deterministic behavior fixtures > failure: maps issuer certificate retrieval failures UNABLE_TO_GET_ISSUER_CERT_LOCALLY to deterministic message [0.03ms]
+(pass) fetchAnalysis deterministic behavior fixtures > failure: maps missing issuer certificate chain UNABLE_TO_GET_ISSUER_CERT to deterministic message [0.02ms]
+(pass) fetchAnalysis deterministic behavior fixtures > failure: maps certificate decrypt-signature failures UNABLE_TO_DECRYPT_CERT_SIGNATURE to deterministic message [0.04ms]
+(pass) fetchAnalysis deterministic behavior fixtures > failure: maps certificate chain overflow CERT_CHAIN_TOO_LONG to deterministic message [0.04ms]
+(pass) fetchAnalysis deterministic behavior fixtures > failure: maps self-signed cert chain errors SELF_SIGNED_CERT_IN_CHAIN to deterministic message [0.05ms]
+(pass) fetchAnalysis deterministic behavior fixtures > failure: maps not-yet-valid certificate CERT_NOT_YET_VALID to deterministic message [0.03ms]
+
+tests/ci-command.test.ts:
+(pass) ci command deterministic fixtures > missing baseline exits 2 and prints CI_BASELINE_REQUIRED
+(pass) ci command deterministic fixtures > happy path: baseline equals fetched analysis -> ok=true exit=0 and single JSON stdout line [2.38ms]
+(pass) ci command deterministic fixtures > drift path: baseline differs -> ok=false exit=1 and single JSON stdout line [0.49ms]
+
+tests/analyze-command.test.ts:
+- Analyzing Example.com...
+✔ Analysis complete for example.com
+(pass) analyze command deterministic fixtures > smoke: normalizes domain and emits JSON payload with --json option [1.68ms]
+- Analyzing example.com...
+✖ Analysis failed
+(pass) analyze command deterministic fixtures > failure: exits with code 1 for API failure path [0.41ms]
+(pass) analyze command deterministic fixtures > summary: prints single-line SUMMARY output and overrides other output modes [0.04ms]
+(pass) analyze command deterministic fixtures > summary+diff: prints drift counts and exit=0 (single-line) [0.43ms]
+(pass) analyze command deterministic fixtures > summary+diff+top-changes: prints drift counts and top leaf paths (single-line) [0.38ms]
+(pass) analyze command deterministic fixtures > summary+diff+top-changes invalid n: exits 2 and prints exactly SUMMARY <domain> exit=2 [0.30ms]
+(pass) analyze command deterministic fixtures > summary+diff+fail-on-diff: exits 1 when drift>0 [0.30ms]
+(pass) analyze command deterministic fixtures > summary+diff: missing baseline exits 2 and prints single-line SUMMARY with exit=2 [0.14ms]
+(pass) analyze command deterministic fixtures > summary+save: writes file but preserves SUMMARY output [0.41ms]
+- Analyzing example.com...
+✔ Analysis complete for example.com
+(pass) analyze command deterministic fixtures > json+save: writes file but preserves JSON output [0.43ms]
+(pass) analyze command deterministic fixtures > summary-json: prints exactly one JSON line to stdout and overrides other output modes [0.02ms]
+(pass) analyze command deterministic fixtures > summary-json+diff: when baseline equals current, drift counts are 0 [0.36ms]
+(pass) analyze command deterministic fixtures > summary-json+diff: includes baseline and drift counts [0.35ms]
+(pass) analyze command deterministic fixtures > summary-json+diff+top-changes: includes top paths arrays and top_n [0.32ms]
+(pass) analyze command deterministic fixtures > summary-json+diff+fail-on-diff: exits 1 but still prints JSON [0.38ms]
+(pass) analyze command deterministic fixtures > summary-json+diff+top-changes invalid n: exits 2 and prints JSON (no fetch) [0.27ms]
+(pass) analyze command deterministic fixtures > summary-json+diff: missing baseline exits 2 and prints JSON (no fetch) [0.09ms]
+(pass) analyze command deterministic fixtures > summary-json+diff: baseline parse error exits 2 and prints JSON (no fetch) [0.31ms]
+(pass) analyze command deterministic fixtures > summary-json: api error exits 1 and prints JSON verdict [0.07ms]
+(pass) analyze command deterministic fixtures > profile=ci: defaults to summary-json output mode (single-line JSON) [0.05ms]
+(pass) analyze command deterministic fixtures > profile=ci+diff: defaults fail-on-diff and exits 1 on drift [0.33ms]
+
+tests/gha-command.test.ts:
+(pass) gha command > missing baseline: exits 2 and prints deterministic stderr
+(pass) gha command > missing domain: exits 2 and prints deterministic stderr [0.52ms]
+(pass) gha command > success: prints exactly two YAML-ish lines [0.06ms]
+(pass) gha command > workflow: prints full workflow YAML with trailing newline [0.17ms]
+(pass) gha command > workflow + --concurrency: emits fixture [0.09ms]
+(pass) gha command > workflow + --runs-on self-hosted: prints workflow YAML with custom runner [0.13ms]
+(pass) gha command > workflow + --node-version 20: prints workflow YAML with setup-node step [0.11ms]
+(pass) gha command > --runs-on without --workflow: exits 2 and prints deterministic stderr [0.03ms]
+(pass) gha command > --concurrency without --workflow: exits 2 and prints deterministic stderr [0.22ms]
+(pass) gha command > --node-version without --workflow: exits 2 and prints deterministic stderr [0.06ms]
+(pass) gha command > workflow + --concurrency blank: exits 2 and prints deterministic stderr [0.05ms]
+(pass) gha command > workflow + --node-version blank: exits 2 and prints deterministic stderr [0.06ms]
+(pass) gha command > workflow + --runs-on blank: exits 2 and prints deterministic stderr [0.05ms]
+(pass) gha command > workflow + timeoutMinutes: emits fixture [0.13ms]
+(pass) gha command > --timeout-minutes without --workflow: exits 2 and prints deterministic stderr [0.02ms]
+(pass) gha command > workflow + --timeout-minutes invalid: exits 2 and prints deterministic stderr [0.08ms]
+(pass) gha command > --pull-request without --workflow: exits 2 and prints deterministic stderr [0.09ms]
+(pass) gha command > --schedule without --workflow: exits 2 and prints deterministic stderr [0.08ms]
+(pass) gha command > --push without --workflow: exits 2 and prints deterministic stderr [0.03ms]
+(pass) gha command > --branch without --workflow: exits 2 and prints deterministic stderr [0.05ms]
+(pass) gha command > --name without --workflow: exits 2 and prints deterministic stderr [0.05ms]
+(pass) gha command > manual without workflow: exits 2 and prints deterministic stderr [0.05ms]
+(pass) gha command > workflow + --name: prints workflow YAML with custom top-level name [0.12ms]
+(pass) gha command > workflow + manual: prints workflow.yml fixture [0.12ms]
+(pass) gha command > workflow + schedule: prints full workflow YAML with schedule block [0.09ms]
+(pass) gha command > workflow + push: prints full workflow YAML with push trigger [0.08ms]
+(pass) gha command > workflow + push + branch: prints YAML with push.branches=[release] and workflow_dispatch [0.09ms]
+(pass) gha command > workflow + push + branch=master: prints workflow-push-branch-master.yml fixture [0.08ms]
+(pass) gha command > workflow + pull-request + branch: prints YAML with pull_request.branches=[release] and workflow_dispatch [0.07ms]
+(pass) gha command > workflow + pull-request + branch=develop: prints workflow-pull-request-branch-develop.yml fixture [0.07ms]
+(pass) gha command > workflow + branch (no push/pull-request): prints normal workflow.yml fixture [0.07ms]
+(pass) gha command > workflow + schedule + pull-request: prints full workflow YAML with pull_request trigger [0.07ms]
+(pass) gha command > workflow + schedule + write: writes YAML with schedule block to disk [0.32ms]
+(pass) gha command > write without workflow: exits 2 and prints deterministic stderr [0.02ms]
+(pass) gha command > workflow + write: writes YAML to disk and prints exactly one WORKFLOW_SAVED line [0.37ms]
+(pass) gha command > workflow + write existing file (no --force): exits 2 with deterministic stderr and does not overwrite [0.47ms]
+(pass) gha command > workflow + write existing file (--force): overwrites and prints WORKFLOW_SAVED [0.35ms]
+(pass) gha command > workflow + --force without --write: exits 2 with deterministic stderr [0.02ms]
+(pass) gha command > workflow + write failure: exits 2 with deterministic stderr [0.27ms]
+(pass) gha command > pinned version snippet: uses @<version> in npx [0.04ms]
+(pass) gha command > pinned version workflow: uses @<version> in YAML [0.06ms]
+(pass) gha command > --job without --workflow: exits 2 and prints deterministic stderr [0.05ms]
+(pass) gha command > workflow + invalid --job id: exits 2 and prints deterministic stderr [0.06ms]
+(pass) gha command > --job-name without --workflow: exits 2 and prints deterministic stderr [0.06ms]
+(pass) gha command > workflow + invalid --job-name: exits 2 and prints deterministic stderr [0.05ms]
+(pass) gha command > workflow + --job specs_ci: prints workflow YAML with custom job id [0.14ms]
+(pass) gha command > workflow + --job-name "My Specs CI": prints workflow YAML with custom job name [0.10ms]
+
+tests/api-formatters.test.ts:
+(pass) specs api helpers > formatBytes returns human readable values
+(pass) specs api helpers > formatRelativeTime handles null and recent timestamps [0.17ms]
+
+ 104 pass
+ 0 fail
+ 334 expect() calls
+Ran 104 tests across 6 files. [55.00ms]

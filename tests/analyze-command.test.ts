@@ -27,7 +27,7 @@ describe('analyze command deterministic fixtures', () => {
     };
 
     const fetchMock = mock(async (input: RequestInfo | URL) => {
-      expect(String(input)).toContain('/api/public/analyze?url=Example.com');
+      expect(String(input)).toContain('/api/public/analyze?url=https%3A%2F%2FExample.com');
       return new Response(JSON.stringify(payload), { status: 200 });
     });
 
@@ -68,7 +68,7 @@ describe('analyze command deterministic fixtures', () => {
     };
 
     const fetchMock = mock(async (input: RequestInfo | URL) => {
-      expect(String(input)).toContain('/api/public/analyze?url=example.com');
+      expect(String(input)).toContain('/api/public/analyze?url=https%3A%2F%2Fexample.com');
       return new Response(JSON.stringify(payload), { status: 200 });
     });
 
@@ -609,7 +609,7 @@ describe('analyze command deterministic fixtures', () => {
   });
 
   test('summary-json: api error exits 1 and prints JSON verdict', async () => {
-    const fetchMock = mock(async () => new Response('boom', { status: 503, statusText: 'Service Unavailable' }));
+    const fetchMock = mock(async () => new Response('boom', { status: 400, statusText: 'Bad Request' }));
     global.fetch = fetchMock as typeof fetch;
 
     const logMock = mock(() => {});
@@ -634,6 +634,483 @@ describe('analyze command deterministic fixtures', () => {
       drift_removed: 0,
       exit: 1,
       error: 'api_error',
+    });
+  });
+
+  test('summary-json: rate-limited API error exits 1 with rate_limited marker', async () => {
+    const fetchMock = mock(async () => new Response('rate limited', { status: 429, statusText: 'Too Many Requests' }));
+    global.fetch = fetchMock as typeof fetch;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await expect(analyzeCommand('example.com', { summaryJson: true })).rejects.toThrow('EXIT_1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: false,
+      domain: 'example.com',
+      drift_changed: 0,
+      drift_added: 0,
+      drift_removed: 0,
+      exit: 1,
+      error: 'rate_limited',
+    });
+  });
+
+  test('summary-json: repeated 503 API error exits 1 with upstream_unavailable marker', async () => {
+    const fetchMock = mock(async () => new Response('down', { status: 503, statusText: 'Service Unavailable' }));
+    global.fetch = fetchMock as typeof fetch;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await expect(analyzeCommand('example.com', { summaryJson: true })).rejects.toThrow('EXIT_1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: false,
+      domain: 'example.com',
+      drift_changed: 0,
+      drift_added: 0,
+      drift_removed: 0,
+      exit: 1,
+      error: 'upstream_unavailable',
+    });
+  });
+
+  test('summary-json: repeated 500 API error exits 1 with upstream_unavailable marker', async () => {
+    const fetchMock = mock(async () => new Response('down', { status: 500, statusText: 'Internal Server Error' }));
+    global.fetch = fetchMock as typeof fetch;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await expect(analyzeCommand('example.com', { summaryJson: true })).rejects.toThrow('EXIT_1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: false,
+      domain: 'example.com',
+      drift_changed: 0,
+      drift_added: 0,
+      drift_removed: 0,
+      exit: 1,
+      error: 'upstream_unavailable',
+    });
+  });
+
+  test('summary-json: repeated 408 API error exits 1 with upstream_unavailable marker', async () => {
+    const fetchMock = mock(async () => new Response('timeout', { status: 408, statusText: 'Request Timeout' }));
+    global.fetch = fetchMock as typeof fetch;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await expect(analyzeCommand('example.com', { summaryJson: true })).rejects.toThrow('EXIT_1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: false,
+      domain: 'example.com',
+      drift_changed: 0,
+      drift_added: 0,
+      drift_removed: 0,
+      exit: 1,
+      error: 'upstream_unavailable',
+    });
+  });
+
+  test('summary-json: repeated 521 API error exits 1 with upstream_unavailable marker', async () => {
+    const fetchMock = mock(async () => new Response('web server down', { status: 521, statusText: 'Web Server Is Down' }));
+    global.fetch = fetchMock as typeof fetch;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await expect(analyzeCommand('example.com', { summaryJson: true })).rejects.toThrow('EXIT_1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: false,
+      domain: 'example.com',
+      drift_changed: 0,
+      drift_added: 0,
+      drift_removed: 0,
+      exit: 1,
+      error: 'upstream_unavailable',
+    });
+  });
+
+  test('summary-json: repeated 522 API error exits 1 with upstream_unavailable marker', async () => {
+    const fetchMock = mock(async () => new Response('origin timeout', { status: 522, statusText: 'Connection Timed Out' }));
+    global.fetch = fetchMock as typeof fetch;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await expect(analyzeCommand('example.com', { summaryJson: true })).rejects.toThrow('EXIT_1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: false,
+      domain: 'example.com',
+      drift_changed: 0,
+      drift_added: 0,
+      drift_removed: 0,
+      exit: 1,
+      error: 'upstream_unavailable',
+    });
+  });
+
+  test('summary-json: repeated 524 API error exits 1 with upstream_unavailable marker', async () => {
+    const fetchMock = mock(async () => new Response('timeout occurred', { status: 524, statusText: 'A Timeout Occurred' }));
+    global.fetch = fetchMock as typeof fetch;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await expect(analyzeCommand('example.com', { summaryJson: true })).rejects.toThrow('EXIT_1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: false,
+      domain: 'example.com',
+      drift_changed: 0,
+      drift_added: 0,
+      drift_removed: 0,
+      exit: 1,
+      error: 'upstream_unavailable',
+    });
+  });
+
+  test('summary-json: repeated 523 API error exits 1 with upstream_unavailable marker', async () => {
+    const fetchMock = mock(async () => new Response('origin unreachable', { status: 523, statusText: 'Origin Is Unreachable' }));
+    global.fetch = fetchMock as typeof fetch;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await expect(analyzeCommand('example.com', { summaryJson: true })).rejects.toThrow('EXIT_1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: false,
+      domain: 'example.com',
+      drift_changed: 0,
+      drift_added: 0,
+      drift_removed: 0,
+      exit: 1,
+      error: 'upstream_unavailable',
+    });
+  });
+
+  test('summary-json: repeated 525 API error exits 1 with upstream_unavailable marker', async () => {
+    const fetchMock = mock(async () => new Response('ssl handshake failed', { status: 525, statusText: 'SSL Handshake Failed' }));
+    global.fetch = fetchMock as typeof fetch;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await expect(analyzeCommand('example.com', { summaryJson: true })).rejects.toThrow('EXIT_1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: false,
+      domain: 'example.com',
+      drift_changed: 0,
+      drift_added: 0,
+      drift_removed: 0,
+      exit: 1,
+      error: 'upstream_unavailable',
+    });
+  });
+
+
+  test('summary-json: repeated 526 API error exits 1 with upstream_unavailable marker', async () => {
+    const fetchMock = mock(async () => new Response('invalid ssl cert', { status: 526, statusText: 'Invalid SSL Certificate' }));
+    global.fetch = fetchMock as typeof fetch;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await expect(analyzeCommand('example.com', { summaryJson: true })).rejects.toThrow('EXIT_1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: false,
+      domain: 'example.com',
+      drift_changed: 0,
+      drift_added: 0,
+      drift_removed: 0,
+      exit: 1,
+      error: 'upstream_unavailable',
+    });
+  });
+
+  test('summary-json: repeated 527 API error exits 1 with upstream_unavailable marker', async () => {
+    const fetchMock = mock(async () =>
+      new Response('railgun listener timeout', { status: 527, statusText: 'Railgun Listener to Origin Error' })
+    );
+    global.fetch = fetchMock as typeof fetch;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await expect(analyzeCommand('example.com', { summaryJson: true })).rejects.toThrow('EXIT_1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: false,
+      domain: 'example.com',
+      drift_changed: 0,
+      drift_added: 0,
+      drift_removed: 0,
+      exit: 1,
+      error: 'upstream_unavailable',
+    });
+  });
+
+  test('summary-json: repeated 528 API error exits 1 with upstream_unavailable marker', async () => {
+    const fetchMock = mock(async () =>
+      new Response('site overloaded', { status: 528, statusText: 'Site is Overloaded' })
+    );
+    global.fetch = fetchMock as typeof fetch;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await expect(analyzeCommand('example.com', { summaryJson: true })).rejects.toThrow('EXIT_1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: false,
+      domain: 'example.com',
+      drift_changed: 0,
+      drift_added: 0,
+      drift_removed: 0,
+      exit: 1,
+      error: 'upstream_unavailable',
+    });
+  });
+
+  test('summary-json: repeated 530 API error exits 1 with upstream_unavailable marker', async () => {
+    const fetchMock = mock(async () =>
+      new Response('origin dns error', { status: 530, statusText: 'Origin DNS Error' })
+    );
+    global.fetch = fetchMock as typeof fetch;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await expect(analyzeCommand('example.com', { summaryJson: true })).rejects.toThrow('EXIT_1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: false,
+      domain: 'example.com',
+      drift_changed: 0,
+      drift_added: 0,
+      drift_removed: 0,
+      exit: 1,
+      error: 'upstream_unavailable',
+    });
+  });
+
+  test('summary-json: repeated 520 API error exits 1 with upstream_unavailable marker', async () => {
+    const fetchMock = mock(async () =>
+      new Response('unknown edge error', { status: 520, statusText: 'Web Server Returned an Unknown Error' })
+    );
+    global.fetch = fetchMock as typeof fetch;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await expect(analyzeCommand('example.com', { summaryJson: true })).rejects.toThrow('EXIT_1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: false,
+      domain: 'example.com',
+      drift_changed: 0,
+      drift_added: 0,
+      drift_removed: 0,
+      exit: 1,
+      error: 'upstream_unavailable',
+    });
+  });
+
+  test('summary-json: repeated EAI_AGAIN DNS failure exits 1 with upstream_unavailable marker', async () => {
+    const fetchMock = mock(async () => {
+      throw Object.assign(new TypeError('fetch failed'), { cause: { code: 'EAI_AGAIN' } });
+    });
+    global.fetch = fetchMock as typeof fetch;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await expect(analyzeCommand('example.com', { summaryJson: true })).rejects.toThrow('EXIT_1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: false,
+      domain: 'example.com',
+      drift_changed: 0,
+      drift_added: 0,
+      drift_removed: 0,
+      exit: 1,
+      error: 'upstream_unavailable',
+    });
+  });
+
+  test('summary-json: ENOTFOUND DNS failure exits 1 with upstream_unavailable marker', async () => {
+    const fetchMock = mock(async () => {
+      throw Object.assign(new TypeError('fetch failed'), { cause: { code: 'ENOTFOUND' } });
+    });
+    global.fetch = fetchMock as typeof fetch;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await expect(analyzeCommand('example.com', { summaryJson: true })).rejects.toThrow('EXIT_1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: false,
+      domain: 'example.com',
+      drift_changed: 0,
+      drift_added: 0,
+      drift_removed: 0,
+      exit: 1,
+      error: 'upstream_unavailable',
     });
   });
 
@@ -709,6 +1186,80 @@ describe('analyze command deterministic fixtures', () => {
       drift_added: 0,
       drift_removed: 0,
       error: null,
+    });
+  });
+
+  test('summary-json+diff+trend: emits deterministic trend deltas from prior summary snapshot', async () => {
+    const payload = {
+      domain: 'example.com',
+      url: 'https://example.com',
+      status: 'online',
+      technologies: [],
+      seo: { score: 93 },
+      host: 'ExampleHost',
+    };
+
+    const baseline = { ...payload, seo: { score: 91 } };
+
+    const dir = await mkdtemp(join(tmpdir(), 'specs-tests-'));
+    const baselinePath = join(dir, 'baseline.json');
+    const trendPath = join(dir, 'trend.json');
+    await writeFile(baselinePath, JSON.stringify(baseline), 'utf8');
+    await writeFile(
+      trendPath,
+      JSON.stringify({ drift_changed: 3, drift_added: 1, drift_removed: 2 }),
+      'utf8'
+    );
+
+    global.fetch = mock(async () => new Response(JSON.stringify(payload), { status: 200 })) as typeof fetch;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+
+    await analyzeCommand('example.com', { summaryJson: true, diff: baselinePath, trend: trendPath });
+
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: true,
+      domain: 'example.com',
+      exit: 0,
+      drift_changed: 1,
+      drift_added: 0,
+      drift_removed: 0,
+      trend_delta_changed: -2,
+      trend_delta_added: -1,
+      trend_delta_removed: -2,
+      error: null,
+    });
+  });
+
+  test('summary-json+trend: exits 2 with baseline_missing when used without --diff', async () => {
+    const logMock = mock(() => {});
+    console.log = logMock as typeof console.log;
+    console.error = mock(() => {}) as typeof console.error;
+
+    const exitMock = mock((code?: number) => {
+      throw new Error(`EXIT_${code ?? 'undefined'}`);
+    });
+    process.exit = exitMock as typeof process.exit;
+
+    await expect(analyzeCommand('example.com', { summaryJson: true, trend: '/tmp/trend.json' })).rejects.toThrow(
+      'EXIT_2'
+    );
+
+    expect(exitMock).toHaveBeenCalledWith(2);
+    expect(logMock).toHaveBeenCalledTimes(1);
+    const out = JSON.parse(String((logMock as any).mock.calls[0][0]));
+    expect(out).toEqual({
+      ok: false,
+      domain: 'example.com',
+      drift_changed: 0,
+      drift_added: 0,
+      drift_removed: 0,
+      exit: 2,
+      error: 'baseline_missing',
     });
   });
 });
