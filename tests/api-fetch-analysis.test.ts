@@ -241,6 +241,14 @@ describe('fetchAnalysis deterministic behavior fixtures', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  test('failure: retries once then returns API status error on repeated transient 525', async () => {
+    const fetchMock = mock(async () => new Response('ssl handshake failed', { status: 525, statusText: 'SSL Handshake Failed' }));
+    global.fetch = fetchMock as typeof fetch;
+
+    await expect(fetchAnalysis('example.com')).rejects.toThrow('API error: 525 SSL Handshake Failed');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   test('failure: retries once then returns API status error on repeated transient 520', async () => {
     const fetchMock = mock(async () => new Response('unknown edge error', { status: 520, statusText: 'Web Server Returned an Unknown Error' }));
     global.fetch = fetchMock as typeof fetch;
