@@ -273,6 +273,15 @@ describe('fetchAnalysis deterministic behavior fixtures', () => {
     await expect(fetchAnalysis('example.com')).rejects.toThrow('API error: 526 Invalid SSL Certificate');
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  test('failure: retries once then returns API status error on repeated transient 527', async () => {
+    const fetchMock = mock(async () => new Response('railgun listener timeout', { status: 527, statusText: 'Railgun Listener to Origin Error' }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(fetchAnalysis('example.com')).rejects.toThrow('API error: 527 Railgun Listener to Origin Error');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   test('failure: retries once then returns API status error on repeated transient 520', async () => {
     const fetchMock = mock(async () => new Response('unknown edge error', { status: 520, statusText: 'Web Server Returned an Unknown Error' }));
     global.fetch = fetchMock as typeof fetch;
