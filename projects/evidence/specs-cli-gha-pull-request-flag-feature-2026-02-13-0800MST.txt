@@ -1,9 +1,0 @@
-specs-cli-gha-pull-request-flag-feature
-timestamp: 2026-02-13 08:00 MST
-
-Command:
-  bun test
-
-Output:
-bun test v1.3.9 (cf6cdbbb)
-sha256: 5a505cf1925c252b2e8965bd16f6a70379801d7fd6486692a7d81af8322ec7f1

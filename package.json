@@ -1,48 +1,34 @@
 {
-  "name": "@sitespecs/specs",
-  "version": "0.1.0",
-  "description": "CLI tool to analyze website tech stack, hosting, and performance",
-  "type": "module",
-  "main": "dist/index.js",
-  "bin": {
-    "specs": "./dist/cli.js"
+  "name": "specs-workspace",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Public upstream workspace for the SiteSpecs CLI, analyzer core, and shared contracts",
+  "packageManager": "pnpm@10.13.1",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
   },
   "scripts": {
-    "build": "tsc",
-    "dev": "tsx src/cli.ts",
-    "prepublishOnly": "bun run build",
-    "test": "bun test",
-    "start": "node dist/cli.js",
-    "lint": "tsc --noEmit",
-    "test:webhook-contract": "bun test tests/api-formatters.test.ts tests/api-fetch-analysis.test.ts tests/analyze-command.test.ts",
-    "test:smoke": "bun test",
-    "test:e2e": "bun run test:webhook-contract"
-  },
-  "keywords": [
-    "cli",
-    "website",
-    "analysis",
-    "tech-stack",
-    "seo",
-    "performance"
-  ],
-  "author": "David Solheim",
-  "license": "MIT",
-  "dependencies": {
-    "@neondatabase/serverless": "latest",
-    "chalk": "^5.3.0",
-    "commander": "^12.1.0",
-    "drizzle-orm": "latest",
-    "ora": "^8.1.1",
-    "table": "^6.9.0"
+    "benchmark:tech": "npm run benchmark:tech --workspace @sitespecs/analyzer-core --silent",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "release:publish": "npm run release:validate && node ./tools/release/publish-release.mjs",
+    "release:validate": "node ./tools/release/validate-release.mjs",
+    "release:validate:dry-run": "node ./tools/release/validate-release.mjs --dry-run",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:webhook-contract": "turbo run test:webhook-contract"
   },
   "devDependencies": {
+    "@changesets/config": "^3.1.3",
+    "@changesets/cli": "^2.29.6",
     "@types/node": "^22.19.7",
-    "drizzle-kit": "latest",
-    "tsx": "^4.19.2",
-    "typescript": "^5.9.3"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.6",
+    "turbo": "^2.5.6",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   }
 }

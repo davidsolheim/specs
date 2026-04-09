@@ -1,135 +1,65 @@
-# specs - Website Analysis CLI
+# specs
 
-A command-line tool for developers to quickly analyze any website's tech stack, hosting, performance, and more.
+The public upstream for the SiteSpecs CLI stack.
 
-## Installation
+This repo is the canonical source of truth for:
+
+- `@sitespecs/specs` - the end-user CLI
+- `@sitespecs/analyzer-core` - the reusable local analysis engine
+- `@sitespecs/contracts` - the shared response and webhook contracts
+
+## Install
 
 ```bash
 npm install -g @sitespecs/specs
 ```
 
-## Usage
+The normal user path is free and local-first:
+
+- `specs <domain>` runs from the user's machine
+- `agent-browser` is bundled and bootstrapped best-effort during install
+- hosted enrichment remains optional through `--enrich` or `--mode cloud`
+
+## Workspace
+
+- `packages/specs-cli` - published `@sitespecs/specs` package
+- `packages/analyzer-core` - published `@sitespecs/analyzer-core` package
+- `packages/contracts` - published `@sitespecs/contracts` package
+- `skills/sitespecs` - agent-installable skill definition
+- `docs/agents/sitespecs.md` - machine-readable usage contract for agents
+
+## Local Development
 
 ```bash
-# Analyze a website
-specs example.com
-
-# Analyze with full details
-specs example.com --verbose
-
-# JSON output
-specs example.com --json
-
-# Preset profiles
-# ci: single-line JSON verdict (and when used with --diff, defaults to failing on drift)
-specs example.com --profile ci
-specs example.com --profile ci --diff baseline.json
-# compare current drift to a prior summary snapshot
-specs example.com --summary-json --diff baseline.json --trend previous-summary.json
-#
-# report: verbose human-readable output
-specs example.com --profile report
-
-# GitHub Actions (copy/paste step snippet)
-# 1) capture a baseline once
-specs baseline example.com --out baseline.json
-# 2) generate a ready-to-paste CI step snippet
-specs gha example.com --baseline baseline.json
-# output:
-# - name: Specs CI
-#   run: npx -y @sitespecs/specs@latest ci example.com --baseline baseline.json
-
-# 3) or generate a minimal full GitHub Actions workflow YAML
-# (optional) pin trigger branch for --push/--pull-request when generating workflow
-specs gha example.com --baseline baseline.json --workflow --branch main
-# (optional) pin Node.js version for reproducible CI
-specs gha example.com --baseline baseline.json --workflow --node-version 20
-
-# Check specific aspects
-specs example.com --tech
-specs example.com --seo
-specs example.com --performance
+npm install
+npm run build
+npm run typecheck
+npm run test
+npm run test:webhook-contract
 ```
 
-## Features
-
-- 🔍 **Technology Detection** - Identify frameworks, libraries, CMS, hosting
-- 🚀 **Performance Metrics** - Load time, page size, Core Web Vitals
-- 📊 **SEO Analysis** - Meta tags, structured data, indexability
-- 🌐 **Hosting Info** - Server, CDN, SSL certificate details
-- ⏱️ **Uptime Status** - Current availability and response time
-- 📅 **Online Since** - Domain age and registration info
-
-## Output Example
-
-```
-$ specs example.com
-
-🌐 example.com
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📦 Technology Stack
-  Framework:    Next.js 16.1.6
-  Hosting:      Vercel
-  Database:     Neon Postgres
-  Analytics:    Google Analytics 4
-
-⚡ Performance
-  Load Time:    1.2s
-  Page Size:    245 KB
-  Requests:     12
-  LCP:          1.1s (Good)
-
-🔍 SEO
-  Title:        Example Domain
-  Description:  ✓ Present
-  Open Graph:   ✓ Complete
-  SSL:          ✓ Valid (expires in 89 days)
-
-🌍 Hosting
-  Server:       Vercel Edge Network
-  IP:           76.76.21.21
-  Location:     United States
-  CDN:          Vercel Edge
-  Online Since: 2020-03-15 (4 years)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-## API
-
-The CLI connects to the sitespecs.com API to fetch real-time analysis data.
-
-### Deterministic transport/TLS error contract
-
-- See `docs/cli-transport-tls-error-contract.md` for the canonical mapping table:
-  `error code -> deterministic CLI message -> operator remediation`.
-- This contract is enforced by `tests/api-fetch-analysis.test.ts` and CI `webhook-contract` checks.
-
-## Development
+Useful package-scoped commands:
 
 ```bash
-# Clone the repository
-git clone https://github.com/davidsolheim/specs.git
-cd specs
-
-# Install dependencies
-bun install
-
-# Run in development
-bun run dev example.com
-
-# Build
-bun run build
-
-# Test
-bun test
+npm run dev --workspace @sitespecs/specs -- example.com
+npm run benchmark:tech
+npm run release:validate:dry-run
 ```
 
-## License
+## Release Contract
 
-MIT © David Solheim
+- Stable versions publish under `latest`
+- Prerelease versions publish under `next`
+- `release:validate:dry-run` packs all publishable packages and runs a clean-room global install smoke test for `@sitespecs/specs`
+- the private SiteSpecs platform repo consumes published `@sitespecs/analyzer-core` and `@sitespecs/contracts` versions from npm
+
+## Community
+
+- Public issues and pull requests are welcome
+- See [CONTRIBUTING.md](./CONTRIBUTING.md) for the contribution flow
+- See [SECURITY.md](./SECURITY.md) for vulnerability reporting
 
 ## Related
 
-- [sitespecs.com](https://sitespecs.com) - Full-featured website monitoring and SEO platform
+- [SiteSpecs Platform](https://github.com/teton-web/site-specs-platform) - private web app and worker platform
+- [sitespecs.com](https://sitespecs.com) - hosted SiteSpecs product

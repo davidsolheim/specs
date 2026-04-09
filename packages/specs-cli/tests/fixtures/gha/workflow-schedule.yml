@@ -1,0 +1,12 @@
+name: SiteSpecs
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'
+jobs:
+  sitespecs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Specs CI
+        run: npx -y @sitespecs/specs@next ci example.com --baseline baseline.json --fail-on-diff

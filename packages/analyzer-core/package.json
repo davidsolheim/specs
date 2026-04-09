@@ -1,0 +1,52 @@
+{
+  "name": "@sitespecs/analyzer-core",
+  "version": "1.0.0",
+  "description": "Reusable local-first analysis engine used by the SiteSpecs CLI and platform services",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "benchmark:tech": "tsx ./scripts/run-tech-benchmark.ts",
+    "build": "tsup src/index.ts --format esm --dts",
+    "dev": "tsup src/index.ts --format esm --dts --watch",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --config ../../vitest.config.ts --passWithNoTests false packages/analyzer-core/tests/agent-browser.test.ts packages/analyzer-core/tests/agent-browser.smoke.test.ts packages/analyzer-core/tests/analyze-http.test.ts packages/analyzer-core/tests/analyze-url.test.ts packages/analyzer-core/tests/technology-detector.test.ts",
+    "test:agent-browser-smoke": "SPECS_RUN_AGENT_BROWSER_SMOKE=1 vitest run --config ../../vitest.config.ts --passWithNoTests false packages/analyzer-core/tests/agent-browser.smoke.test.ts"
+  },
+  "dependencies": {
+    "@sitespecs/contracts": "1.0.0",
+    "cheerio": "^1.0.0"
+  },
+  "author": "David Solheim",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/davidsolheim/specs.git",
+    "directory": "packages/analyzer-core"
+  },
+  "homepage": "https://github.com/davidsolheim/specs/tree/main/packages/analyzer-core",
+  "bugs": {
+    "url": "https://github.com/davidsolheim/specs/issues"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.7",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

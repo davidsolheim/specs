@@ -1,0 +1,72 @@
+{
+  "name": "@sitespecs/specs",
+  "version": "0.1.2",
+  "description": "CLI tool to analyze website tech stack, hosting, and performance",
+  "type": "module",
+  "main": "dist/cli.js",
+  "bin": {
+    "specs": "./dist/cli.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "docs",
+    "scripts"
+  ],
+  "scripts": {
+    "build": "tsup --config tsup.config.ts",
+    "dev": "tsx src/cli.ts",
+    "postinstall": "node ./scripts/postinstall.mjs",
+    "prepublishOnly": "npm run build",
+    "test": "vitest run --config ../../vitest.config.ts --passWithNoTests false packages/specs-cli/tests/api-formatters.test.ts packages/specs-cli/tests/api-fetch-analysis.test.ts packages/specs-cli/tests/api-hosted-analysis.test.ts packages/specs-cli/tests/analysis-resolution.test.ts packages/specs-cli/tests/analyze-command.test.ts packages/specs-cli/tests/baseline-command.test.ts packages/specs-cli/tests/ci-command.test.ts packages/specs-cli/tests/gha-command.test.ts packages/specs-cli/tests/local-default-commands.test.ts packages/specs-cli/tests/bootstrap-agent-browser.test.ts",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/cli.js",
+    "lint": "tsc --noEmit",
+    "test:webhook-contract": "vitest run --config ../../vitest.config.ts --passWithNoTests false packages/specs-cli/tests/api-formatters.test.ts packages/specs-cli/tests/api-fetch-analysis.test.ts packages/specs-cli/tests/analyze-command.test.ts",
+    "test:smoke": "vitest run --config ../../vitest.config.ts --passWithNoTests false packages/specs-cli/tests/api-formatters.test.ts packages/specs-cli/tests/api-fetch-analysis.test.ts packages/specs-cli/tests/api-hosted-analysis.test.ts packages/specs-cli/tests/analysis-resolution.test.ts packages/specs-cli/tests/analyze-command.test.ts packages/specs-cli/tests/baseline-command.test.ts packages/specs-cli/tests/ci-command.test.ts packages/specs-cli/tests/gha-command.test.ts packages/specs-cli/tests/local-default-commands.test.ts packages/specs-cli/tests/bootstrap-agent-browser.test.ts",
+    "test:e2e": "vitest run --config ../../vitest.config.ts --passWithNoTests false packages/specs-cli/tests/api-formatters.test.ts packages/specs-cli/tests/api-fetch-analysis.test.ts packages/specs-cli/tests/analyze-command.test.ts"
+  },
+  "keywords": [
+    "cli",
+    "website",
+    "analysis",
+    "tech-stack",
+    "seo",
+    "performance"
+  ],
+  "author": "David Solheim",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/davidsolheim/specs.git",
+    "directory": "packages/specs-cli"
+  },
+  "homepage": "https://github.com/davidsolheim/specs/tree/main/packages/specs-cli",
+  "bugs": {
+    "url": "https://github.com/davidsolheim/specs/issues"
+  },
+  "dependencies": {
+    "agent-browser": "^0.25.3",
+    "chalk": "^5.3.0",
+    "cheerio": "^1.1.2",
+    "commander": "^12.1.0",
+    "ora": "^8.1.1",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@sitespecs/analyzer-core": "1.0.0",
+    "@sitespecs/contracts": "1.0.0",
+    "@types/node": "^22.19.7",
+    "drizzle-kit": "latest",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

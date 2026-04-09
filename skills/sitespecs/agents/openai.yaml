@@ -1,0 +1,4 @@
+interface:
+  display_name: "SiteSpecs"
+  short_description: "Local-first website analysis and optional hosted enrichment"
+  default_prompt: "Use $sitespecs to analyze a website locally, inspect execution/fallback metadata, and optionally attach SiteSpecs-hosted enrichment."

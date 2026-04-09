@@ -1,0 +1,10 @@
+name: SiteSpecs
+on:
+  workflow_dispatch:
+jobs:
+  sitespecs:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - name: Specs CI
+        run: npx -y @sitespecs/specs@next ci example.com --baseline baseline.json --fail-on-diff

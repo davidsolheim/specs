@@ -1,0 +1,48 @@
+{
+  "name": "@sitespecs/contracts",
+  "version": "1.0.0",
+  "description": "Shared response, queue, and webhook contracts for SiteSpecs packages",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts",
+    "dev": "tsup src/index.ts --format esm --dts --watch",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --config ../../vitest.config.ts --passWithNoTests false packages/contracts/tests/smoke.test.ts"
+  },
+  "dependencies": {
+    "zod": "3.25.76"
+  },
+  "author": "David Solheim",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/davidsolheim/specs.git",
+    "directory": "packages/contracts"
+  },
+  "homepage": "https://github.com/davidsolheim/specs/tree/main/packages/contracts",
+  "bugs": {
+    "url": "https://github.com/davidsolheim/specs/issues"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.7",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
