@@ -1,6 +1,6 @@
 {
   "name": "@sitespecs/analyzer-core",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Reusable local-first analysis engine used by the SiteSpecs CLI and platform services",
   "type": "module",
   "main": "dist/index.js",

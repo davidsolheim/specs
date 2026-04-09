@@ -68,8 +68,12 @@ function isPublishedVersion(packageName, version) {
       return false;
     }
 
-    const parsed = JSON.parse(output);
-    return parsed === version;
+    try {
+      const parsed = JSON.parse(output);
+      return parsed === version;
+    } catch {
+      return output === version;
+    }
   } catch {
     return false;
   }

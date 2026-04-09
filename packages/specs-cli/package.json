@@ -1,6 +1,6 @@
 {
   "name": "@sitespecs/specs",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "CLI tool to analyze website tech stack, hosting, and performance",
   "type": "module",
   "main": "dist/cli.js",
@@ -57,7 +57,7 @@
     "zod": "3.25.76"
   },
   "devDependencies": {
-    "@sitespecs/analyzer-core": "1.0.0",
+    "@sitespecs/analyzer-core": "1.0.1",
     "@sitespecs/contracts": "1.0.0",
     "@types/node": "^22.19.7",
     "drizzle-kit": "latest",

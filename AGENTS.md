@@ -42,6 +42,8 @@ The release workflow on `main` is the source of truth. It validates, then publis
 
 Stable semvers publish to `latest`. Prereleases publish to the prerelease tag, such as `next`.
 
+The `davidsolheim/specs` repo must keep an `NPM_TOKEN` Actions secret configured for non-interactive publishes. If a brand-new package under the `@sitespecs` scope has never been published before, the first publish may need to be bootstrapped from a fully privileged local npm token once. After that, the normal GitHub Actions release workflow should handle subsequent updates.
+
 ### 4. Verify registry state
 
 ```bash

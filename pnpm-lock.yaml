@@ -99,7 +99,7 @@ importers:
         version: 3.25.76
     devDependencies:
       '@sitespecs/analyzer-core':
-        specifier: 1.0.0
+        specifier: 1.0.1
         version: link:../analyzer-core
       '@sitespecs/contracts':
         specifier: 1.0.0
